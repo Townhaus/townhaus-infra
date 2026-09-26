@@ -1,0 +1,5 @@
+---
+# Keep module execution on the distribution-managed Python interpreter.
+# This avoids Ansible's fallback interpreter discovery changing after a new
+# Python version is installed on the host.
+ansible_python_interpreter: /usr/bin/python3.11
