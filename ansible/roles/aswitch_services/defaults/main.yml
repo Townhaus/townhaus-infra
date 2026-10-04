@@ -11,6 +11,7 @@ aswitch_services_source_files:
 
 aswitch_services_disabled_services: []
 aswitch_services_static_hosts: []
+aswitch_services_static_hosts_persist_cloud_init: false
 aswitch_services_caddy_ca_enabled: false
 aswitch_services_caddy_ca_host: "{{ groups['townhaus_caddy'] | first }}"
 aswitch_services_caddy_ca_container: caddy
