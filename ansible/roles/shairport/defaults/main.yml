@@ -3,6 +3,7 @@ shairport_package_name: shairport-sync
 shairport_service_name: shairport-sync.service
 shairport_metadata_enabled: "yes"
 shairport_output_backend: alsa
+shairport_interpolation: soxr
 shairport_ignore_volume_control: "yes"
 shairport_require_mqtt_support: true
 shairport_config_path: /etc/shairport-sync.conf

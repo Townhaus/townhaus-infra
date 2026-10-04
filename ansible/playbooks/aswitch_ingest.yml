@@ -24,12 +24,15 @@
       become: true
 
   tasks:
-    - name: Route Groovenet through the Caddy host
+    - name: Route Groovenet through the Caddy host, including after reboot
       ansible.builtin.lineinfile:
-        path: /etc/hosts
+        path: "{{ item }}"
         regexp: "^[^#]*\\s{{ groovenet_caddy_hostname | regex_escape }}(?:\\s|$)"
         line: "{{ groovenet_caddy_ip }} {{ groovenet_caddy_hostname }}"
         state: present
+      loop:
+        - /etc/hosts
+        - /etc/cloud/templates/hosts.debian.tmpl
       become: true
 
     - name: Read Caddy internal root certificate

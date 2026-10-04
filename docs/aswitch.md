@@ -3,6 +3,10 @@
 `aswitch.local` receives AirPlay, switches sources through its GPIO relay, and
 captures active vinyl playback for GrooveNET.
 
+GrooveNET is routed through a static host entry for `groovenet.home.arpa`.
+Cloud-init manages `/etc/hosts` on aswitch, so the Ansible deployment also
+updates `/etc/cloud/templates/hosts.debian.tmpl` to retain the entry on reboot.
+
 ## Current signal path
 
 ```
@@ -28,7 +32,8 @@ aswitch deployment.
 | Vinyl ingest/client settings | `just deploy-aswitch-ingest` | `audio_activity` |
 
 The Shairport output is pinned to 44.1 kHz, `S16_LE`, and a -12 dB maximum
-software level. The preamp remains the master volume.
+software level. Interpolation uses Shairport's `auto` mode on aswitch. The
+preamp remains the master volume.
 
 ## Verify and troubleshoot
 
@@ -40,9 +45,16 @@ ssh aswitch.local 'journalctl -u shairport-sync -n 100 --no-pager'
 # Inspect vinyl activity and GrooveNET upload attempts.
 ssh aswitch.local 'journalctl -u audio_activity -n 100 --no-pager'
 
+# Confirm the GrooveNET host entry survived reboot.
+ssh aswitch.local 'getent hosts groovenet.home.arpa'
+
 # Confirm the UCA202 is the only USB audio device.
 ssh aswitch.local 'lsusb | grep -Ei "audio|Texas Instruments|SMSL"'
 ```
+
+If GrooveNET uploads fail with `Name or service not known`, run
+`just deploy-aswitch-ingest`. The playbook restores the current host entry and
+its cloud-init template so the mapping survives future reboots.
 
 ## Power health
 

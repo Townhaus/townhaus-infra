@@ -42,6 +42,16 @@
   loop: "{{ aswitch_services_static_hosts }}"
   become: true
 
+- name: Keep static host entries when cloud-init regenerates /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/cloud/templates/hosts.debian.tmpl
+    regexp: "^[^#]*\\s{{ item.name | regex_escape }}(?:\\s|$)"
+    line: "{{ item.address }} {{ item.name }}"
+    state: present
+  loop: "{{ aswitch_services_static_hosts }}"
+  when: aswitch_services_static_hosts_persist_cloud_init | bool
+  become: true
+
 - name: Read Caddy internal root certificate
   ansible.builtin.command:
     argv:

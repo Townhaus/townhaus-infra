@@ -48,6 +48,7 @@ aswitch_services_disabled_services:
 aswitch_services_static_hosts:
   - address: 192.168.2.151
     name: groovenet.home.arpa
+aswitch_services_static_hosts_persist_cloud_init: true
 
 # Trust Caddy's internal CA so the Groovenet uploader can verify its HTTPS
 # certificate while using the static mapping above.
@@ -100,6 +101,8 @@ aswitch_env_extra:
   PREAMP_LED_AVAILABILITY_TOPIC: aswitch/preamp/led/availability
 
 shairport_name: aswitch
+# Let Shairport choose interpolation on the Pi 3 instead of forcing soxr.
+shairport_interpolation: auto
 # CamillaDSP consumes the loopback only when enabled. Otherwise Shairport sends
 # AirPlay to the UCA202, which forwards it digitally over TOSLINK to the SMSL.
 shairport_alsa_output: "{{ 'hw:Loopback,0,0' if (camilladsp_enabled | bool) else 'plughw:CARD=CODEC,DEV=0' }}"
