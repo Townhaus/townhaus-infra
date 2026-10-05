@@ -1,6 +1,8 @@
 ---
 aswitch_app_dir: "{{ remote_home }}/aswitch"
 
+pi_wifi_connection_name: netplan-wlan0-GREATWHITE
+
 dotfiles_enabled: true
 dotfiles_manage_packages: false
 dotfiles_set_default_shell: false

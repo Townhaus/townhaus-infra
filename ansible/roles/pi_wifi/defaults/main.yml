@@ -1,5 +1,5 @@
 ---
-# Name of the existing NetworkManager connection on pi-cam. The role changes
+# Name of the existing NetworkManager connection. The role changes
 # only the power-save property; it deliberately does not manage the SSID or
 # its PSK.
 pi_wifi_connection_name: preconfigured

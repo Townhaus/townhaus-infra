@@ -41,3 +41,41 @@
   changed_when: false
   failed_when: pi_wifi_powersave_status.stdout | trim not in pi_wifi_powersave_expected_values
   become: true
+
+- name: Read the active Wi-Fi power-save setting
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/iw
+      - dev
+      - "{{ pi_wifi_interface }}"
+      - get
+      - power_save
+  register: pi_wifi_runtime_powersave
+  changed_when: false
+  become: true
+
+- name: Disable Wi-Fi power saving without reconnecting
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/iw
+      - dev
+      - "{{ pi_wifi_interface }}"
+      - set
+      - power_save
+      - "off"
+  when: "'Power save: on' in pi_wifi_runtime_powersave.stdout"
+  changed_when: true
+  become: true
+
+- name: Verify active Wi-Fi power saving is disabled
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/iw
+      - dev
+      - "{{ pi_wifi_interface }}"
+      - get
+      - power_save
+  register: pi_wifi_runtime_status
+  changed_when: false
+  failed_when: "'Power save: off' not in pi_wifi_runtime_status.stdout"
+  become: true

@@ -30,10 +30,22 @@ aswitch deployment.
 | All aswitch services | `just deploy-aswitch` | Managed services as needed |
 | AirPlay routing or level | `just deploy-aswitch-airplay` | `shairport-sync` |
 | Vinyl ingest/client settings | `just deploy-aswitch-ingest` | `audio_activity` |
+| Wi-Fi power saving | `just deploy-aswitch-wifi` | None; applies without reconnecting |
 
 The Shairport output is pinned to 44.1 kHz, `S16_LE`, and a -12 dB maximum
 software level. Interpolation uses Shairport's `auto` mode on aswitch. The
 preamp remains the master volume.
+
+The `pi_wifi` role disables power saving on the existing
+`netplan-wlan0-GREATWHITE` NetworkManager connection and on the active `wlan0`
+interface. Both the full deployment and `just deploy-aswitch-wifi` apply it
+without reconnecting Wi-Fi. Verify the active setting with:
+
+```bash
+ssh aswitch.local '/usr/sbin/iw dev wlan0 get power_save'
+```
+
+The expected result is `Power save: off`.
 
 ## Verify and troubleshoot
 

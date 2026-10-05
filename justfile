@@ -28,6 +28,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
 
@@ -69,6 +70,10 @@ deploy-beelink:
 # Deploy all services to aswitch.
 deploy-aswitch:
     ansible-playbook ansible/playbooks/aswitch.yml --ask-become-pass
+
+# Disable aswitch Wi-Fi power saving immediately and persistently.
+deploy-aswitch-wifi:
+    ansible-playbook ansible/playbooks/aswitch_wifi.yml --ask-become-pass
 
 # Quickly refresh aswitch's Groovenet ingest client, Caddy CA trust, and route.
 deploy-aswitch-ingest:
