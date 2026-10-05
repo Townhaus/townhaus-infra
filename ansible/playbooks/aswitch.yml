@@ -27,6 +27,7 @@
       changed_when: false
 
   roles:
+    - role: pi_wifi
     - role: alloy
       vars:
         # aswitch currently uses the router for DNS, which does not resolve

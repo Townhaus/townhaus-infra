@@ -1,0 +1,7 @@
+---
+- name: Disable Wi-Fi power saving on aswitch.local
+  hosts: aswitch
+  gather_facts: false
+
+  roles:
+    - role: pi_wifi
