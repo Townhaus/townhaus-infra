@@ -7,6 +7,10 @@ beelink_app_dir := "/srv/docker/townhaus-caddy"
 default:
     @just --list
 
+# Create the Townhaus Infra workspace in the current Herdr session.
+herdr:
+    python3 scripts/herdr-setup.py
+
 # Install Python packages required by Ansible collections (uses mise Python from host_vars/localhost.yml).
 pip-deps:
     mise which python3 | xargs -I{} {} -m pip install uptime-kuma-api
