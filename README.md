@@ -2,6 +2,9 @@
 
 Homelab monorepo managing a Caddy reverse proxy stack, Frigate NVR, Raspberry Pi audio services, CamillaDSP, Beszel monitoring, and AdGuard DNS — all deployed via Ansible.
 
+For a terminal workspace with repo, Caddy, stack operations, and audio tabs,
+see [Townhaus Infra in Herdr](docs/herdr.md).
+
 ## Hosts
 
 | Host | Role |
