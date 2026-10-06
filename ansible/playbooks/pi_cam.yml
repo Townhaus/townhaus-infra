@@ -36,7 +36,46 @@
         alloy_loki_url: http://192.168.2.151:3100/loki/api/v1/push
     - role: shairport
     - role: camilladsp
+      when: camilladsp_enabled | default(true) | bool
     - role: aswitch_services
     - role: beszel_agent
     - role: package_update_report
     - role: dotfiles
+
+  post_tasks:
+    - name: Disable CamillaDSP and its automatic startup hooks
+      when: not (camilladsp_enabled | default(true) | bool)
+      become: true
+      block:
+        - name: Remove CamillaDSP DAC hot-plug rule
+          ansible.builtin.file:
+            path: /etc/udev/rules.d/99-camilladsp-dac.rules
+            state: absent
+          notify: Reload pi-cam udev rules
+
+        - name: Find installed CamillaDSP units
+          ansible.builtin.stat:
+            path: "/etc/systemd/system/{{ item }}"
+          loop:
+            - camilladsp-recover.timer
+            - camilladsp-recover.service
+            - camillagui.service
+            - camilladsp.service
+          register: pi_cam_dsp_units
+
+        - name: Stop and disable installed CamillaDSP services
+          ansible.builtin.systemd:
+            name: "{{ item.item }}"
+            enabled: false
+            state: stopped
+            daemon_reload: true
+          loop: "{{ pi_cam_dsp_units.results }}"
+          loop_control:
+            label: "{{ item.item }}"
+          when: item.stat.exists
+
+  handlers:
+    - name: Reload pi-cam udev rules
+      ansible.builtin.command: udevadm control --reload-rules
+      become: true
+      changed_when: true

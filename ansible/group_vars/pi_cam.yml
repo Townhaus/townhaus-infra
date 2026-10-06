@@ -1,6 +1,9 @@
 ---
 aswitch_app_dir: "{{ remote_home }}/aswitch"
 
+# Keep the DSP installation and presets available, but play directly to the ZD3.
+camilladsp_enabled: false
+
 aswitch_services:
   - name: dac_status
     script: dac_status.py
@@ -22,7 +25,8 @@ aswitch_env_extra:
   DAC_STATE_TOPIC: aswitch/dac/zd3/state
   DAC_DETAILS_TOPIC: aswitch/dac/zd3/details
   DAC_AVAILABILITY_TOPIC: aswitch/dac/zd3/availability
-  DAC_COMMAND_TOPIC: aswitch/dac/zd3/command
+  # Stop subscribing to the Home Assistant automation that starts CamillaDSP.
+  DAC_COMMAND_TOPIC: "{{ 'aswitch/dac/zd3/command' if (camilladsp_enabled | bool) else '' }}"
   AMP_TRIGGER_GPIO: "27"
   AMP_TRIGGER_COMMAND_TOPIC: pi-cam/trigger
   AMP_TRIGGER_STATE_TOPIC: pi-cam/trigger/state
@@ -32,7 +36,8 @@ audio_room_name: lounge_room
 airplay_display_name: Lounge Room Audio
 
 shairport_name: "{{ airplay_display_name }}"
-shairport_alsa_output: "hw:Loopback,0,0"
+shairport_interpolation: auto
+shairport_alsa_output: "{{ 'hw:Loopback,0,0' if (camilladsp_enabled | bool) else 'plughw:CARD=ZD3,DEV=0' }}"
 shairport_alsa_output_rate: 44100
 shairport_alsa_output_format: S32_LE
 shairport_ignore_volume_control: "yes"
@@ -41,6 +46,11 @@ shairport_mqtt_client_id: shairport-living-room
 shairport_mqtt_publish_parsed: "yes"
 shairport_mqtt_publish_cover: "yes"
 shairport_mqtt_enable_remote: "no"
+shairport_systemd_after: >-
+  {{ ['sound.target', 'camilladsp.service', 'network.target', 'nss-lookup.target']
+     if (camilladsp_enabled | bool)
+     else ['sound.target', 'network.target', 'nss-lookup.target'] }}
+shairport_systemd_wants: "{{ ['camilladsp.service'] if (camilladsp_enabled | bool) else [] }}"
 
 camilladsp_capture_device: "hw:Loopback,1"
 camilladsp_playback_device: "plughw:CARD=ZD3,DEV=0"
