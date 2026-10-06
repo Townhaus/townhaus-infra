@@ -30,6 +30,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
 
 # Run repository validation checks.
@@ -100,6 +101,10 @@ deploy:
     just deploy-beelink
     just deploy-aswitch
     just deploy-pi-cam
+
+# Update only the SSH login banners on all three hosts.
+deploy-motd:
+    ansible-playbook ansible/playbooks/motd.yml --ask-become-pass
 
 # Start an Immich backup immediately.
 immich-backup:

@@ -27,6 +27,7 @@
       changed_when: false
 
   roles:
+    - role: motd
     - role: pi_wifi
     - role: alloy
       vars:

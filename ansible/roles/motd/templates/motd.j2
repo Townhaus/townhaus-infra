@@ -1,0 +1,13 @@
+
+  _____ ___  __        ___   _ _   _    _   _   _ ____
+ |_   _/ _ \ \ \      / / \ | | | | |  / \ | | | / ___|
+   | || | | | \ \ /\ / /|  \| | |_| | / _ \| | | \___ \
+   | || |_| |  \ V  V / | |\  |  _  |/ ___ \ |_| |___) |
+   |_| \___/    \_/\_/  |_| \_|_| |_/_/   \_\___/|____/
+
+  {{ motd_provider }}
+
+  {{ ansible_facts['hostname'] }} :: {{ motd_host_description }}
+  {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} / {{ ansible_facts['architecture'] }}
+
+  Make yourself at /home.

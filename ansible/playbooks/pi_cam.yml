@@ -27,6 +27,7 @@
       changed_when: false
 
   roles:
+    - role: motd
     - role: pi_wifi
     - role: alloy
       vars:
@@ -50,12 +51,7 @@
           ansible.builtin.file:
             path: /etc/udev/rules.d/99-camilladsp-dac.rules
             state: absent
-          register: pi_cam_dsp_udev_removed
-
-        - name: Reload udev rules after removing DSP hot-plug startup
-          ansible.builtin.command: udevadm control --reload-rules
-          when: pi_cam_dsp_udev_removed.changed
-          changed_when: true
+          notify: Reload pi-cam udev rules
 
         - name: Find installed CamillaDSP units
           ansible.builtin.stat:
@@ -77,3 +73,9 @@
           loop_control:
             label: "{{ item.item }}"
           when: item.stat.exists
+
+  handlers:
+    - name: Reload pi-cam udev rules
+      ansible.builtin.command: udevadm control --reload-rules
+      become: true
+      changed_when: true

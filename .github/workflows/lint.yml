@@ -59,6 +59,7 @@ jobs:
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
+          ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
 
   configuration:

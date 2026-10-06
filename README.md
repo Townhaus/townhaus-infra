@@ -486,6 +486,26 @@ cp ansible/group_vars/townhaus_caddy/frigate.yml.example ansible/group_vars/town
 just deploy-beelink
 ```
 
+## Login banners
+
+All three hosts display an ASCII Townhaus banner, the Napkin Service
+Incorporated credit, and their host name and purpose at login. The `motd` role
+manages `/etc/motd` and saves a backup when replacing an existing message.
+Debian's dynamic kernel banner and SSH's last-login line still appear.
+
+Update just the banners without deploying services or accessing 1Password:
+
+```bash
+just deploy-motd
+# Preview changes, or update a single host:
+ansible-playbook ansible/playbooks/motd.yml --check --diff --ask-become-pass
+ansible-playbook ansible/playbooks/motd.yml --limit townhaus_caddy --ask-become-pass
+```
+
+The normal host playbooks also apply the banner. Override `motd_provider` or
+`motd_host_description` in group or host vars to customize the text. Host and
+OS details are refreshed at deployment time.
+
 ## Package update monitoring
 
 Each managed Linux host runs a weekly APT audit on Monday morning. It refreshes
