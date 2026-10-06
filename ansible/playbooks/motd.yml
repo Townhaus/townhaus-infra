@@ -1,0 +1,7 @@
+---
+- name: Configure Townhaus login banners
+  hosts: townhaus_caddy:aswitch:pi_cam
+  gather_facts: true
+
+  roles:
+    - role: motd

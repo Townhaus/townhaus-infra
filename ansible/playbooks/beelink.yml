@@ -27,6 +27,7 @@
       changed_when: false
 
   roles:
+    - role: motd
     - role: alloy
       vars:
         alloy_collect_docker: true

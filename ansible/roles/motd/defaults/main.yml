@@ -1,0 +1,9 @@
+---
+motd_provider: Home lab provided by Napkin Service Incorporated
+motd_host_description: >-
+  {{ 'Main server | Caddy / photos / cameras / home automation'
+     if 'townhaus_caddy' in group_names else
+     'Audio switch | AirPlay / vinyl capture / source routing'
+     if 'aswitch' in group_names else
+     'Lounge audio | AirPlay / CamillaDSP / DAC / amp trigger'
+     if 'pi_cam' in group_names else 'Townhaus home lab node' }}
