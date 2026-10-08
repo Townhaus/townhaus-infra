@@ -1,6 +1,6 @@
 # Python interpreter for tasks delegated to localhost (e.g. Uptime Kuma monitors).
-# Set this to the Python that has uptime-kuma-api installed.
-# Find yours with: pip show uptime-kuma-api | grep Location
+# Set this to the Python that has uptime-kuma-api2 installed.
+# Find yours with: pip show uptime-kuma-api2 | grep Location
 #
 # asdf example:
 #   ansible_python_interpreter: /Users/yourname/.asdf/installs/python/3.12.8/bin/python3

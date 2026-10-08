@@ -13,7 +13,8 @@ herdr:
 
 # Install Python packages required by Ansible collections (uses mise Python from host_vars/localhost.yml).
 pip-deps:
-    mise which python3 | xargs -I{} {} -m pip install uptime-kuma-api
+    mise which python3 | xargs -I{} sh -c '"$1" -m pip uninstall -y uptime-kuma-api' sh {} || true
+    mise which python3 | xargs -I{} sh -c '"$1" -m pip install uptime-kuma-api2==2.9.0' sh {}
 
 # Install required Ansible collections and Python packages.
 dependencies:
