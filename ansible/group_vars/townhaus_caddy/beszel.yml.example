@@ -48,3 +48,5 @@ adguard_dns_rewrites:
     answer: "192.168.2.171"
   - domain: pi-cam.home.arpa
     answer: "192.168.2.171"
+  - domain: herdr
+  - domain: herdr.home.arpa
