@@ -166,3 +166,16 @@ homeassistant {
 	import common
 	reverse_proxy http://192.168.2.91:8123
 }
+
+# Herdr Web UI on the Mac mini, published over Tailscale Serve:
+# - https://herdr
+# - https://herdr.home.arpa
+herdr, herdr.home.arpa {
+	import common
+	reverse_proxy https://100.115.36.23 {
+		header_up Host {host}
+		transport http {
+			tls_server_name macm4mini.tail0bdbb0.ts.net
+		}
+	}
+}
