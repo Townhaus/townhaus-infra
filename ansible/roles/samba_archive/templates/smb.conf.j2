@@ -1,0 +1,23 @@
+[global]
+   workgroup = WORKGROUP
+   server string = Beelink Archive
+   server role = standalone server
+   security = user
+   map to guest = never
+   disable netbios = yes
+   smb ports = 445
+   min protocol = SMB2
+   hosts allow = 127.0.0.1{% for network in samba_archive_allowed_networks %} {{ network }}{% endfor %}
+   hosts deny = 0.0.0.0/0
+
+[archive]
+   path = {{ samba_archive_path }}
+   browseable = yes
+   read only = no
+   guest ok = no
+   valid users = {{ samba_archive_user }}
+   force user = {{ samba_archive_user }}
+   force group = {{ townhaus_caddy_group }}
+   create mask = 0660
+   directory mask = 2770
+   inherit permissions = yes

@@ -1,0 +1,86 @@
+---
+- name: Require Samba archive password reference
+  ansible.builtin.assert:
+    that:
+      - samba_archive_password_ref is defined
+      - samba_archive_password_ref | length > 0
+      - samba_archive_password_ref != "op://Vault/Archive SMB/password"
+    fail_msg: >-
+      Set samba_archive_password_ref to the 1Password reference for the
+      Samba archive account before deploying.
+
+- name: Resolve Samba archive password from 1Password
+  ansible.builtin.command:
+    argv:
+      - op
+      - read
+      - "{{ samba_archive_password_ref }}"
+  delegate_to: localhost
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  register: samba_archive_password_result
+  changed_when: false
+  no_log: true
+
+- name: Require a non-empty Samba archive password
+  ansible.builtin.assert:
+    that:
+      - samba_archive_password_result.rc == 0
+      - samba_archive_password_result.stdout | length > 0
+    fail_msg: Failed to resolve the Samba archive password from 1Password.
+  no_log: true
+
+- name: Install Samba server
+  ansible.builtin.apt:
+    name: samba
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure archive directory exists
+  ansible.builtin.file:
+    path: "{{ samba_archive_path }}"
+    state: directory
+    owner: "{{ samba_archive_user }}"
+    group: "{{ townhaus_caddy_group }}"
+    mode: "2770"
+  become: true
+
+- name: Configure authenticated archive share
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/bin/testparm -s %s
+  become: true
+  notify: Restart Samba
+
+- name: Check whether archive account already exists in Samba
+  ansible.builtin.command:
+    argv:
+      - pdbedit
+      - -L
+      - -u
+      - "{{ samba_archive_user }}"
+  become: true
+  register: samba_archive_account
+  changed_when: false
+  failed_when: false
+
+- name: Set Samba password for archive account
+  ansible.builtin.command:
+    argv: "{{ ['smbpasswd', '-s'] + (['-a'] if samba_archive_account.rc != 0 or samba_archive_account.stdout | length == 0 else []) + [samba_archive_user] }}"
+    stdin: "{{ samba_archive_password_result.stdout }}\n{{ samba_archive_password_result.stdout }}\n"
+  become: true
+  register: samba_archive_password_set
+  changed_when: samba_archive_password_set.rc == 0
+  no_log: true
+
+- name: Enable and start Samba
+  ansible.builtin.systemd:
+    name: smbd
+    enabled: true
+    state: started
+  become: true

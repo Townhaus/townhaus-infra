@@ -21,6 +21,15 @@ nfs_allowed_networks:
   - 192.168.2.0/24
   - 100.64.0.0/10
 
+# Samba login for the archive share. Store its password in 1Password and
+# replace this reference before deploying the Beelink playbook.
+samba_archive_user: saegey
+samba_archive_path: /srv/storage/archive
+samba_archive_password_ref: op://Vault/Archive SMB/password
+samba_archive_allowed_networks:
+  - 192.168.2.0/24
+  - 100.64.0.0/10
+
 townhaus_caddy_env:
   CADDY_HTTP_PORT: "80"
   CADDY_HTTPS_PORT: "443"

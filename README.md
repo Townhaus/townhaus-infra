@@ -32,6 +32,13 @@ see [Townhaus Infra in Herdr](docs/herdr.md).
 | Grafana | `https://grafana` | Central log exploration and dashboards |
 | PVR | `https://pvr` | Website-change monitor |
 
+### beelink.local (systemd)
+
+| Service | Description |
+|---|---|
+| `smbd.service` | Authenticated SMB archive share at `/srv/storage/archive` (`smb://beelink/archive`) |
+| `nfs-server.service` | Existing read-only NFS music share |
+
 ### aswitch.local (systemd)
 
 | Service | Description |
@@ -151,6 +158,8 @@ cp ansible/inventory.ini.example ansible/inventory.ini
 cp ansible/group_vars/townhaus_caddy/main.yml.example ansible/group_vars/townhaus_caddy/main.yml
 cp ansible/group_vars/townhaus_caddy/beszel.yml.example ansible/group_vars/townhaus_caddy/beszel.yml
 # Edit both files — set 1Password refs, beelink LAN IP, AdGuard credentials
+# Create the Archive SMB password item in 1Password and set
+# samba_archive_password_ref in main.yml.
 ```
 
 **1Password items required** (all in the `Homelab` vault):
@@ -162,6 +171,28 @@ cp ansible/group_vars/townhaus_caddy/beszel.yml.example ansible/group_vars/townh
 | `MQTT` | `username`, `password` |
 | `AdGuard` | `username`, `password` |
 | `Frigate` | `mqtt_password`, `doorbell_rtsp_url`, `doorbell_talk_rtsp_url`, `backyard_rtsp_url`, `backyard_rtsp_sub_url`, `oficina_rtsp_url`, `oficina_rtsp_sub_url`, `homekit_pin` |
+| `Archive SMB` | `password` |
+
+## Archive file share
+
+The Ansible-managed Samba service exports `/srv/storage/archive` as the
+authenticated `archive` share. It allows clients from the configured LAN and
+Tailscale ranges; the Samba password is resolved from 1Password during the
+Beelink playbook run. The account defaults to the existing `saegey` host user.
+Set `samba_archive_user`, `samba_archive_path`, and
+`samba_archive_allowed_networks` in the local Beelink vars file to change those
+defaults. Do not expose TCP port 445 through the internet router.
+
+After `just deploy-beelink`, connect with the Tailscale MagicDNS name or
+Tailscale IP:
+
+- macOS Finder: **Go → Connect to Server**, then `smb://beelink/archive`.
+- iOS Files: **Browse → … → Connect to Server**, then `smb://beelink/archive`.
+- Omarchy/Linux: connect to `smb://beelink/archive` in the file manager.
+
+Sign in as the configured Samba account using the password stored in 1Password.
+The existing NFS music share remains managed separately by the `nfs_server`
+role.
 
 ## Deploying
 

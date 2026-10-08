@@ -39,6 +39,7 @@
     - role: uptime_kuma
     - role: immich_backup
     - role: nfs_server
+    - role: samba_archive
     - role: dotfiles
 
 # Run the existing Docker stack playbook separately:
