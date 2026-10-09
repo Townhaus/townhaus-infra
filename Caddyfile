@@ -174,12 +174,19 @@ homeassistant {
 # tailscale interface, regardless of SNI, which swallowed every other TLS
 # connection to that machine (including every groovenet dev worktree vhost).
 # macm4mini's own Caddy (tls internal) now owns :443 there exclusively.
+#
+# herdr-web-ui does its own Origin validation against the Host header it
+# sees (see its docs' reverse-proxy section): forwarding a different Host
+# than the browser's origin trips "invalid_origin" (403). macm4mini's Caddy
+# vhost lists herdr.home.arpa directly for exactly this reason, so the Host
+# header can be passed through unchanged -- tls_server_name only picks the
+# TLS leg's SNI/cert, independent of the HTTP Host forwarded to the app.
 herdr, herdr.home.arpa {
 	import common
 	reverse_proxy https://100.115.36.23 {
-		header_up Host herdr.groovenet-dev.home.arpa
+		header_up Host {host}
 		transport http {
-			tls_server_name herdr.groovenet-dev.home.arpa
+			tls_server_name herdr.home.arpa
 			tls_insecure_skip_verify
 		}
 	}
