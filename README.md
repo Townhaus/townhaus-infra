@@ -628,7 +628,9 @@ treating the backup as production-ready.
 
 ## AdGuard DNS
 
-DNS rewrites are managed declaratively in `ansible/group_vars/townhaus_caddy/beszel.yml` under `adguard_dns_rewrites`. All short hostnames resolve to beelink's LAN IP; Caddy handles the reverse proxy. Run the beelink playbook to apply changes.
+DNS rewrites are managed declaratively in `ansible/group_vars/townhaus_caddy/beszel.yml` under `adguard_dns_rewrites`. Most entries resolve to beelink's LAN IP (the `adguard_dns_answer` default); Caddy there handles the reverse proxy. Run the beelink playbook to apply changes.
+
+An entry can override the answer per-domain — used for `*.groovenet-dev.home.arpa`, a wildcard that resolves straight to macm4mini's Tailscale IP so every `dj-playlist` herdr-task worktree gets a reachable hostname with no new DNS entry per worktree. That box runs its own Homebrew Caddy (`CADDY_HOST_SUFFIX=groovenet-dev.home.arpa`, set in its `~/.zshrc.local`) generating one vhost per worktree with `tls internal` — a different root CA from this repo's Docker Caddy, so trust it separately per remote device (same steps as "Caddy internal TLS" below, against `~/Library/Application Support/Caddy/pki/authorities/local/root.crt` on macm4mini instead of the Docker volume path).
 
 ## Uptime Kuma upgrades
 
