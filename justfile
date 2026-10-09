@@ -25,6 +25,7 @@ dependencies:
 syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-groovenet.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
@@ -55,6 +56,25 @@ deploy-stack:
 # Deploy the GrooveNET stack to beelink at the pinned tag, or override: `just deploy-groovenet v0.1.5`.
 deploy-groovenet version="":
     ansible-playbook ansible/deploy-groovenet.yml {{ if version == "" { "" } else { "-e groovenet_image_tag=" + version } }}
+
+# Deploy PVR Analog from latest main, or override with a full SHA / vX.Y.Z Git tag.
+[positional-arguments]
+deploy-now-playing ref="":
+    #!/usr/bin/env zsh
+    set -eu
+    deploy_args=(ansible/deploy-now-playing.yml --ask-become-pass)
+    if [[ -n "$1" ]]; then
+        deploy_args+=(-e "now_playing_source_ref=$1")
+    fi
+    ansible-playbook "${deploy_args[@]}"
+
+# Show the PVR Analog service status on beelink.
+status-now-playing:
+    ssh {{ beelink }} "cd /srv/docker/now-playing && docker compose -p now-playing ps"
+
+# Follow PVR Analog logs on beelink.
+logs-now-playing:
+    ssh -t {{ beelink }} "cd /srv/docker/now-playing && docker compose -p now-playing logs -f --tail=100 now-playing"
 
 # Apply beelink host roles, including backup timers and service configuration.
 configure-beelink:
