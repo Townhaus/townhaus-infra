@@ -1,0 +1,215 @@
+---
+- name: Deploy the Public Vinyl Radio now playing display
+  hosts: townhaus_caddy
+  gather_facts: false
+  vars:
+    now_playing_compose_base:
+      - docker
+      - compose
+      - --env-file
+      - .env
+      - -f
+      - compose.yaml
+      - -p
+      - "{{ now_playing_project_name }}"
+    now_playing_caddy_config: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../Caddyfile', rstrip=false) }}"
+
+  pre_tasks:
+    - name: Validate the deployment settings
+      ansible.builtin.assert:
+        that:
+          - now_playing_source_ref is match('^(main|[0-9a-f]{40}|v[0-9]+\.[0-9]+\.[0-9]+)$')
+          - now_playing_data_mode in ['homeassistant', 'mock']
+          - now_playing_hostname == 'now-playing.home.arpa'
+          - now_playing_ha_player is match('^media_player\.[a-z0-9_]+$')
+          - now_playing_ha_vinyl_sensor is match('^binary_sensor\.[a-z0-9_]+$')
+        fail_msg: >-
+          Use main, a full commit SHA, or a vX.Y.Z release tag and valid HA entity IDs.
+          The Caddy site is configured for now-playing.home.arpa.
+
+    - name: Inspect the existing Caddy container
+      ansible.builtin.command:
+        argv: [docker, inspect, caddy]
+      register: now_playing_caddy_inspect
+      changed_when: false
+      no_log: true
+
+    - name: Require running Caddy on the configured shared network
+      ansible.builtin.assert:
+        that:
+          - (now_playing_caddy_inspect.stdout | from_json | first).State.Running
+          - now_playing_caddy_network in (now_playing_caddy_inspect.stdout | from_json | first).NetworkSettings.Networks
+          - >-
+            (now_playing_caddy_inspect.stdout | from_json | first).Mounts |
+            selectattr('Destination', 'equalto', '/etc/caddy/Caddyfile') |
+            selectattr('Source', 'equalto', townhaus_caddy_app_dir ~ '/Caddyfile') |
+            list | length == 1
+        fail_msg: >-
+          Deploy the existing townhaus-caddy stack first. Caddy must be running,
+          joined to the configured network, and using the managed Caddyfile.
+
+    - name: Check 1Password CLI availability on the control machine
+      ansible.builtin.command:
+        argv: [op, --version]
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      changed_when: false
+
+    - name: Resolve the HA token on the control machine
+      ansible.builtin.command:
+        argv: [op, read, "{{ now_playing_ha_token_ref }}"]
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      register: now_playing_ha_token_result
+      changed_when: false
+      no_log: true
+      when: now_playing_data_mode == 'homeassistant'
+
+    - name: Require a resolved Home Assistant token
+      ansible.builtin.assert:
+        that:
+          - now_playing_ha_token_result.stdout | trim is match('^[A-Za-z0-9._~-]+$')
+        fail_msg: Home Assistant credentials could not be loaded from 1Password.
+      no_log: true
+      when: now_playing_data_mode == 'homeassistant'
+
+    - name: Validate the proposed Caddy configuration in the running container
+      ansible.builtin.command:
+        argv: [docker, exec, -i, caddy, caddy, adapt, --config, "-", --adapter, caddyfile, --validate]
+        stdin: "{{ now_playing_caddy_config }}"
+        stdin_add_newline: false
+      changed_when: false
+
+  tasks:
+    - name: Ensure Git is installed for the public source checkout
+      ansible.builtin.package:
+        name: git
+        state: present
+      become: true
+
+    - name: Ensure the app and public certificate directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0755"
+      become: true
+      loop:
+        - "{{ now_playing_app_dir }}"
+        - "{{ now_playing_app_dir }}/certs"
+        - "{{ now_playing_app_dir }}/source"
+
+    - name: Fetch and check out the public application source
+      ansible.builtin.git:
+        repo: "{{ now_playing_repo }}"
+        dest: "{{ now_playing_app_dir }}/source"
+        version: "{{ now_playing_source_ref }}"
+        update: true
+      register: now_playing_source_checkout
+
+    - name: Show the application revision being deployed
+      ansible.builtin.debug:
+        msg: "Building {{ now_playing_source_ref }} at commit {{ now_playing_source_checkout.after }}"
+
+    - name: Read only Caddy's public root certificate
+      ansible.builtin.command:
+        argv: [docker, exec, caddy, cat, "{{ now_playing_caddy_root_source }}"]
+      register: now_playing_caddy_root
+      changed_when: false
+
+    - name: Install the public root certificate for the app container
+      ansible.builtin.copy:
+        content: "{{ now_playing_caddy_root.stdout }}\n"
+        dest: "{{ now_playing_caddy_root_dest }}"
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0644"
+      register: now_playing_caddy_root_installed
+
+    - name: Render the private runtime environment
+      ansible.builtin.template:
+        src: templates/now-playing/env.j2
+        dest: "{{ now_playing_app_dir }}/.env"
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0600"
+      diff: false
+      no_log: true
+
+    - name: Render Compose configuration without a host port mapping
+      ansible.builtin.template:
+        src: templates/now-playing/compose.yaml.j2
+        dest: "{{ now_playing_app_dir }}/compose.yaml"
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0644"
+
+    - name: Validate the runtime Compose configuration without printing credentials
+      ansible.builtin.command:
+        argv: "{{ now_playing_compose_base + ['config', '--quiet'] }}"
+      args:
+        chdir: "{{ now_playing_app_dir }}"
+      changed_when: false
+      no_log: true
+
+    - name: Build the checked-out application
+      ansible.builtin.command:
+        argv: "{{ now_playing_compose_base + ['build', '--pull'] }}"
+      args:
+        chdir: "{{ now_playing_app_dir }}"
+      changed_when: true
+
+    - name: Start the app and wait for its HTTP health check
+      ansible.builtin.command:
+        argv: >-
+          {{ now_playing_compose_base + ['up', '-d', '--wait', '--wait-timeout', '120'] +
+             (['--force-recreate'] if now_playing_caddy_root_installed.changed else []) }}
+      args:
+        chdir: "{{ now_playing_app_dir }}"
+      changed_when: true
+
+    - name: Read the current host Caddyfile
+      ansible.builtin.slurp:
+        src: "{{ townhaus_caddy_app_dir }}/Caddyfile"
+      register: now_playing_current_caddyfile
+
+    # The Caddyfile is an individual bind-mounted file. Preserve its inode so
+    # the running container sees the update, then use Caddy's reload command.
+    - name: Install the validated Caddyfile through the existing bind mount
+      ansible.builtin.command:
+        argv: [tee, "{{ townhaus_caddy_app_dir }}/Caddyfile"]
+        stdin: "{{ now_playing_caddy_config }}"
+        stdin_add_newline: false
+      become: true
+      changed_when: true
+      when: (now_playing_current_caddyfile.content | b64decode) != now_playing_caddy_config
+
+    - name: Reload Caddy with the managed configuration
+      ansible.builtin.command:
+        argv: [docker, exec, caddy, caddy, reload, --config, /etc/caddy/Caddyfile, --adapter, caddyfile]
+      changed_when: true
+
+    - name: Apply only the now playing DNS rewrite
+      ansible.builtin.include_role:
+        name: adguard_dns
+      vars:
+        adguard_dns_rewrites:
+          - domain: "{{ now_playing_hostname }}"
+
+    - name: Show the now playing service status
+      ansible.builtin.command:
+        argv: "{{ now_playing_compose_base + ['ps'] }}"
+      args:
+        chdir: "{{ now_playing_app_dir }}"
+      register: now_playing_status
+      changed_when: false
+
+    - name: Print the service status and display URL
+      ansible.builtin.debug:
+        msg:
+          - "{{ now_playing_status.stdout_lines }}"
+          - "Deployed {{ now_playing_source_ref }} at commit {{ now_playing_source_checkout.after }}"
+          - "Open https://{{ now_playing_hostname }} on the iPad."

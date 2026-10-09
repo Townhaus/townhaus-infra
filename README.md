@@ -31,6 +31,7 @@ see [Townhaus Infra in Herdr](docs/herdr.md).
 | Uptime Kuma | `https://uptime` | HTTP endpoint monitoring |
 | Grafana | `https://grafana` | Central log exploration and dashboards |
 | PVR | `https://pvr` | Website-change monitor |
+| PVR Analog | `https://now-playing.home.arpa` | CRT now playing display |
 
 ### beelink.local (systemd)
 
@@ -172,6 +173,7 @@ cp ansible/group_vars/townhaus_caddy/beszel.yml.example ansible/group_vars/townh
 | `AdGuard` | `username`, `password` |
 | `Frigate` | `mqtt_password`, `doorbell_rtsp_url`, `doorbell_talk_rtsp_url`, `backyard_rtsp_url`, `backyard_rtsp_sub_url`, `oficina_rtsp_url`, `oficina_rtsp_sub_url`, `homekit_pin` |
 | `Archive SMB` | `password` |
+| `Home Assistant Codex Token` | `token` |
 
 ## Archive file share
 
@@ -209,6 +211,9 @@ just deploy-pi-cam
 
 # Deploy all hosts
 just deploy
+
+# Deploy the PVR Analog display from the latest main
+just deploy-now-playing
 
 # Deploy the GrooveNET stack at the pinned tag (see "GrooveNET stack" below)
 just deploy-groovenet
@@ -258,6 +263,23 @@ GROOVENET_DOCKER_NETWORK=dj-playlist_default \
 GROOVENET_UPSTREAM_HOST=webapp \
 docker compose up -d caddy
 ```
+
+## PVR Analog now playing display
+
+Deploy the Public Vinyl Radio CRT display from its separate public application
+repo with:
+
+```bash
+just deploy-now-playing
+```
+
+This fetches and builds the latest application `main` on the Beelink, resolves
+the HA credential through 1Password on the Mac, installs the public Caddy CA certificate,
+starts the app on Caddy's existing Docker network, and applies its Caddy route
+and DNS entry. Open `https://now-playing.home.arpa` on the iPad.
+
+See [PVR Analog deployment](docs/now-playing.md) for configuration, updates,
+certificate trust, and operational commands.
 
 ## GrooveNET stack
 

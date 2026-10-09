@@ -1,0 +1,25 @@
+---
+# PVR Analog is built from the latest main branch on each deployment.
+# Override for a release or rollback: just deploy-now-playing <commit-or-tag>
+now_playing_repo: https://github.com/Public-Vinyl-Radio/now-playing.git
+now_playing_source_ref: main
+now_playing_app_dir: /srv/docker/now-playing
+now_playing_project_name: now-playing
+
+# Caddy already belongs to this network. The app publishes no host port.
+now_playing_caddy_network: "{{ townhaus_caddy_compose_project_name }}_default"
+now_playing_hostname: now-playing.home.arpa
+
+# Only the public root certificate is copied out of the Caddy container.
+now_playing_caddy_root_source: /data/caddy/pki/authorities/local/root.crt
+now_playing_caddy_root_dest: "{{ now_playing_app_dir }}/certs/caddy-root.crt"
+
+# Resolve the token locally on the Mac; do not put the actual token here.
+now_playing_data_mode: homeassistant
+now_playing_ha_token_ref: op://Homelab/Home Assistant Codex Token/token
+now_playing_ha_base_url: https://ha.home.arpa
+now_playing_ha_player: media_player.living_room_audio
+now_playing_ha_vinyl_sensor: binary_sensor.vinyl_listening_active
+now_playing_ha_artwork_origins: ""
+now_playing_ha_reconnect_base_ms: 1000
+now_playing_ha_reconnect_max_ms: 30000

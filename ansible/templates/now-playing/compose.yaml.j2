@@ -1,0 +1,41 @@
+# Managed by ansible/deploy-now-playing.yml.
+# Build with the application's Dockerfile; keep deployment config outside its source tree.
+services:
+  now-playing:
+    build:
+      context: ./source
+    restart: unless-stopped
+    init: true
+    networks:
+      - caddy
+    # HA is reached through Caddy on this same host, retaining HTTPS and its hostname.
+    extra_hosts:
+      - "ha.home.arpa:host-gateway"
+    environment:
+      PVR_DATA_MODE: ${PVR_DATA_MODE:-homeassistant}
+      HA_BASE_URL: ${HA_BASE_URL:-https://ha.home.arpa}
+      HA_MEDIA_PLAYER_ENTITY_ID: ${HA_MEDIA_PLAYER_ENTITY_ID:-media_player.living_room_audio}
+      HA_VINYL_SENSOR_ENTITY_ID: ${HA_VINYL_SENSOR_ENTITY_ID:-binary_sensor.vinyl_listening_active}
+      HA_TOKEN: ${HA_TOKEN:-}
+      HA_ARTWORK_ORIGINS: ${HA_ARTWORK_ORIGINS:-}
+      HA_RECONNECT_BASE_MS: ${HA_RECONNECT_BASE_MS:-1000}
+      HA_RECONNECT_MAX_MS: ${HA_RECONNECT_MAX_MS:-30000}
+      NODE_EXTRA_CA_CERTS: /app/certs/caddy-root.crt
+    volumes:
+      - ${CADDY_ROOT_CERT:?Set CADDY_ROOT_CERT}:/app/certs/caddy-root.crt:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:?Set CADDY_NETWORK}

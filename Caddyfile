@@ -65,6 +65,12 @@ ha, ha.home.arpa {
 	reverse_proxy http://192.168.2.91:8123
 }
 
+# PVR Analog now playing display on the shared Caddy Docker network.
+now-playing.home.arpa {
+	import common
+	reverse_proxy http://now-playing:3000
+}
+
 # AdGuard Home admin UI:
 # - https://adguard
 # - https://adguard.home.arpa
