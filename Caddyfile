@@ -167,15 +167,20 @@ homeassistant {
 	reverse_proxy http://192.168.2.91:8123
 }
 
-# Herdr Web UI on the Mac mini, published over Tailscale Serve:
+# Herdr Web UI on the Mac mini, published as a Caddy vhost there:
 # - https://herdr
 # - https://herdr.home.arpa
+# No longer via Tailscale Serve: it claimed all of :443 on macm4mini's
+# tailscale interface, regardless of SNI, which swallowed every other TLS
+# connection to that machine (including every groovenet dev worktree vhost).
+# macm4mini's own Caddy (tls internal) now owns :443 there exclusively.
 herdr, herdr.home.arpa {
 	import common
 	reverse_proxy https://100.115.36.23 {
-		header_up Host {host}
+		header_up Host herdr.groovenet-dev.home.arpa
 		transport http {
-			tls_server_name macm4mini.tail0bdbb0.ts.net
+			tls_server_name herdr.groovenet-dev.home.arpa
+			tls_insecure_skip_verify
 		}
 	}
 }
