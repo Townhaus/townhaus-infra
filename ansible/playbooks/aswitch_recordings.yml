@@ -1,0 +1,7 @@
+---
+- name: Deploy the recording archive workflow to aswitch and Beelink
+  hosts: aswitch
+  gather_facts: true
+  roles:
+    - role: recording_archive
+      when: recording_archive_enabled | bool

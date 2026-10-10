@@ -10,6 +10,7 @@ Raspberry Pi MQTT relay controller and audio monitoring suite. Independent Pytho
 |---|---|---|
 | `aswitch.py` | `aswitch.service` | GPIO relay switch — routes audio source (DAC vs mixer) and controls a trigger output via MQTT commands |
 | `audio_activity.py` | `audio_activity.service` | USB audio RMS detector — publishes activity and, when active, sends 15-second vinyl windows to Groovenet |
+| `recording_archive.py` | `recording-archive.service` / `.timer` | Archives completed WAVs to Beelink over SSH and cleans local originals seven days after success |
 | `ir_logger.py` | `ir_logger.service` | VS1838B IR receiver + blaster — publishes received raw frames and sends learned preamp commands via MQTT |
 | `preamp_trigger.py` | `preamp_trigger.service` | HY-M154 optocoupler monitor — publishes the preamp's physical 12V trigger state |
 | `preamp_led.py` | `preamp_led.service` | TCS34725 monitor — publishes preamp LED color, input state, and raw RGB readings |
@@ -42,6 +43,13 @@ sequence. Preserve it when changing the uploader; those fields form the
 server's idempotency key. On aswitch it is gated by the RMS activity state;
 discard a partial window when entering an intentional inactive period rather
 than joining audio from separate playback sessions.
+
+**Recording archives** — Open WAVs must use `.wav.part`; promote to `.wav`
+only after successful close. The archive worker runs separately and selects
+only completed timestamped WAVs. Retention starts at successful transfer and
+requires a matching durable receipt in `.archive-state.json`; never delete an
+untransferred recording or select `.part` files. Preserve receipts when renaming
+archived recordings. Deployment lives in `ansible/roles/recording_archive`.
 
 **`logger.exception()`** — automatically appends the current exception's traceback and message. Do not pass the caught exception as a format argument — `logger.exception("Failed")` is correct; `logger.exception("Failed: %s", exc)` is redundant.
 
@@ -99,7 +107,13 @@ Secret `.env` files (gitignored): `env/aswitch.env`, `env/pi-cam.env`, and any f
 
 ## Testing
 
-There are no automated tests. Services are hardware-coupled (GPIO, USB audio, `lsusb`). Validate changes by:
+Recording finalization, transfers and retention have automated tests:
+
+```bash
+PYTHONPATH=services/aswitch python3 -m unittest discover -s services/aswitch/tests -v
+```
+
+The remaining services are hardware-coupled (GPIO, USB audio, `lsusb`). Validate changes by:
 
 1. Running `ruff check .` locally.
 2. Deploying to the Pi and tailing the journal: `journalctl -u <service>.service -f`.

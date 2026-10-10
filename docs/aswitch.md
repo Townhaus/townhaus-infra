@@ -30,6 +30,7 @@ aswitch deployment.
 | All aswitch services | `just deploy-aswitch` | Managed services as needed |
 | AirPlay routing or level | `just deploy-aswitch-airplay` | `shairport-sync` |
 | Vinyl ingest/client settings | `just deploy-aswitch-ingest` | `audio_activity` |
+| Recording archive workflow | `just deploy-aswitch-recordings` | `audio_activity` when code changes; archive timer |
 | Wi-Fi power saving | `just deploy-aswitch-wifi` | None; applies without reconnecting |
 
 The Shairport output is pinned to 44.1 kHz, `S16_LE`, and a -12 dB maximum
@@ -46,6 +47,65 @@ ssh aswitch.local '/usr/sbin/iw dev wlan0 get power_save'
 ```
 
 The expected result is `Power save: off`.
+
+## Retrieving vinyl recordings
+
+Run `just deploy-aswitch-recordings` to install the archive workflow on the
+existing aswitch setup. The full `just deploy-aswitch` deployment also includes
+it. Deployment configures a dedicated SSH key on aswitch, authorizes its public
+key on Beelink, and pins Beelink's SSH host key through the existing Ansible
+connection. Both hosts need sudo access during deployment; routine transfers
+run as the existing user without sudo.
+
+Turn **Mixer Recording** on in Home Assistant to start a stereo, 16-bit,
+44.1 kHz WAV with the configured -6 dB attenuation. Turn it off to finalize
+the file. The recorder writes `.wav.part` while running and only renames it
+to `.wav` after closing the WAV header successfully. Files left as `.part`
+after a crash or write failure remain on the Pi for manual recovery and are
+not transferred automatically.
+
+`recording-archive.timer` checks for completed recordings about once a minute.
+It uses rsync over SSH to copy them to
+`/srv/storage/archive/recordings/vinyl/` on Beelink. Browse
+`smb://beelink/archive` and open `recordings/vinyl` in Finder or Files. Names
+include the recording start timestamp, such as
+`audio-20261010-143000-123456.wav`; existing timestamped WAVs are also eligible.
+After listening, rename the archived file with artist, album, and side if desired.
+
+Interrupted transfers retain their temporary data in `.rsync-partial` on
+Beelink and retry on later timer runs. The archive worker runs separately from
+audio detection with reduced CPU and disk scheduling priority. Each successful
+copy gets a durable local receipt in `recordings/.archive-state.json`; the Pi
+keeps that original for seven days **from successful transfer**, then removes
+it. Untransferred files are never removed by retention cleanup. Renaming the
+archived copy does not trigger another upload.
+
+Configure `recording_archive_retention_days`, `recording_archive_destination`,
+or `recording_archive_host` in the aswitch group variables if needed. The
+destination defaults to the configured Beelink Samba root plus
+`/recordings/vinyl`. Keep the receipt file when managing recordings manually;
+removing it makes remaining local WAVs eligible for transfer again.
+
+The retained MQTT topic `aswitch/audio_recording/archive` contains JSON with
+`state` (`transferring`, `ready`, or `error`), `path` (the Beelink destination),
+and `error` (empty on success). The **Mixer Recording Archive** sensor in
+`services/aswitch/home_assistant/mqtt_sensors.yaml` exposes the status and path
+attributes. Merge that sensor into Home Assistant's existing MQTT configuration
+and reload MQTT entities. The topic retains the latest transfer result between
+timer runs; no new recording means no status change.
+
+```bash
+ssh aswitch.local 'systemctl list-timers recording-archive.timer --no-pager'
+ssh aswitch.local 'journalctl -u recording-archive.service -n 50 --no-pager'
+# Start a transfer scan immediately.
+ssh -t aswitch.local 'sudo systemctl start recording-archive.service'
+```
+
+Local verification of recording finalization, retry behavior and retention:
+
+```bash
+PYTHONPATH=services/aswitch python3 -m unittest discover -s services/aswitch/tests -v
+```
 
 ## Verify and troubleshoot
 

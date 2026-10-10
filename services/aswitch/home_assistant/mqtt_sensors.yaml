@@ -51,6 +51,13 @@ mqtt:
       icon: "mdi:usb-port"
 
   sensor:
+    - name: "Mixer Recording Archive"
+      unique_id: "aswitch_mixer_recording_archive"
+      state_topic: "aswitch/audio_recording/archive"
+      value_template: "{{ value_json.state }}"
+      json_attributes_topic: "aswitch/audio_recording/archive"
+      icon: "mdi:folder-music"
+
     - name: "Preamp LED"
       unique_id: "aswitch_preamp_led"
       state_topic: "aswitch/preamp/led/state"

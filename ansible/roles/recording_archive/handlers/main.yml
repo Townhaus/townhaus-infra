@@ -1,0 +1,13 @@
+---
+- name: Restart Recording Audio Monitor
+  ansible.builtin.systemd:
+    name: audio_activity.service
+    state: restarted
+  become: true
+
+- name: Restart Recording Archive Timer
+  ansible.builtin.systemd:
+    name: recording-archive.timer
+    state: restarted
+    daemon_reload: true
+  become: true

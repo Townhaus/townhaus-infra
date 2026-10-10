@@ -1,0 +1,126 @@
+---
+- name: Check existing aswitch environment
+  ansible.builtin.stat:
+    path: "{{ aswitch_app_dir }}/.env"
+  register: recording_archive_environment
+
+- name: Require an installed audio monitor
+  ansible.builtin.assert:
+    that:
+      - recording_archive_environment.stat.exists
+      - recording_archive_retention_days | int > 0
+    fail_msg: Deploy aswitch services first, and use a positive recording retention period.
+
+- name: Install archive transfer tools on aswitch
+  ansible.builtin.apt:
+    name: [rsync, openssh-client]
+    state: present
+  become: true
+
+- name: Install rsync on the archive host
+  ansible.builtin.apt:
+    name: rsync
+    state: present
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  become: true
+
+- name: Require the existing Samba archive root
+  ansible.builtin.stat:
+    path: "{{ recording_archive_root }}"
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  register: recording_archive_share
+
+- name: Check that the archive share is provisioned
+  ansible.builtin.assert:
+    that:
+      - recording_archive_share.stat.isdir | default(false)
+    fail_msg: Deploy the Beelink Samba archive share first.
+
+- name: Create recording archive directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ recording_archive_user }}"
+    group: "{{ recording_archive_group }}"
+    mode: "2770"
+  loop:
+    - "{{ recording_archive_root }}/recordings"
+    - "{{ recording_archive_destination }}"
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  become: true
+
+- name: Generate a dedicated recording transfer key
+  ansible.builtin.command:
+    argv: [ssh-keygen, -q, -t, ed25519, -N, "", -C, aswitch-recording-archive, -f, "{{ recording_archive_identity }}"]
+    creates: "{{ recording_archive_identity }}"
+
+- name: Protect recording transfer private key
+  ansible.builtin.file:
+    path: "{{ recording_archive_identity }}"
+    mode: "0600"
+
+- name: Read recording transfer public key
+  ansible.builtin.slurp:
+    src: "{{ recording_archive_identity }}.pub"
+  register: recording_archive_public_key
+
+- name: Authorize aswitch recording transfers on the archive host
+  ansible.posix.authorized_key:
+    user: "{{ recording_archive_user }}"
+    key: "{{ recording_archive_public_key.content | b64decode }}"
+    key_options: restrict
+    state: present
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  become: true
+
+- name: Read trusted archive server host key through Ansible
+  ansible.builtin.slurp:
+    src: /etc/ssh/ssh_host_ed25519_key.pub
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  register: recording_archive_host_key
+
+- name: Pin the recording archive SSH host key
+  ansible.builtin.copy:
+    dest: "{{ recording_archive_known_hosts }}"
+    content: "{{ recording_archive_host }} {{ (recording_archive_host_key.content | b64decode).split()[0:2] | join(' ') }}\n"
+    mode: "0600"
+
+- name: Deploy recording completion handling
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../services/aswitch/audio_activity.py"
+    dest: "{{ aswitch_app_dir }}/audio_activity.py"
+    mode: "0644"
+  notify: Restart Recording Audio Monitor
+
+- name: Deploy recording archive worker
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../services/aswitch/recording_archive.py"
+    dest: "{{ aswitch_app_dir }}/recording_archive.py"
+    mode: "0644"
+
+- name: Deploy recording archive configuration
+  ansible.builtin.template:
+    src: archive.env.j2
+    dest: "{{ aswitch_app_dir }}/.recording-archive.env"
+    mode: "0600"
+
+- name: Deploy recording archive systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/recording-archive.{{ item }}"
+    mode: "0644"
+  loop: [service, timer]
+  become: true
+  notify: Restart Recording Archive Timer
+
+# Stop the old recorder (which used .wav for open files) before the first scan.
+- name: Apply recording completion handling before enabling transfers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable recording archive timer
+  ansible.builtin.systemd:
+    name: recording-archive.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

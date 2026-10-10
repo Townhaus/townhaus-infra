@@ -21,6 +21,7 @@ Aswitch is a Raspberry Pi-controlled audio switching and amplifier trigger syste
 |---|---|
 | `aswitch.py` | GPIO relay control — switches audio source and 12V trigger via MQTT |
 | `audio_activity.py` | USB audio RMS detector — publishes active/inactive state, optional WAV recording |
+| `recording_archive.py` | Transfers completed WAVs to the Beelink archive and retains local copies for seven days after transfer |
 | `ir_logger.py` | VS1838B IR receiver + IR LED blaster — receives raw frames and sends learned preamp commands via MQTT |
 | `preamp_ir_codes.py` | Learned preamp IR fingerprint map used to tag known buttons |
 | `preamp_trigger.py` | HY-M154 optocoupler monitor — publishes the preamp's physical 12V trigger state |
@@ -212,6 +213,7 @@ Amp on  -> ~+12V
 | `aswitch/audio_recording/state` | state (retained) | `on`, `off` |
 | `aswitch/audio_recording/file` | state (retained) | current WAV path |
 | `aswitch/audio_recording/error` | event | error message string |
+| `aswitch/audio_recording/archive` | state (retained) | JSON: `state`, `path`, `error` |
 
 ### dac_status.py — DAC Presence
 
@@ -348,6 +350,18 @@ arecord -D plughw:CARD=CODEC,DEV=0 -f cd -d 5 test.wav
 Tune these on the Pi via `.env` if your mixer output level differs.
 
 ### Recording Defaults
+
+Recordings preserve stereo, 16-bit PCM in uncompressed WAV files. With the
+deployed GrooveNET configuration, the shared capture rate is 44.1 kHz. Recording
+continues through silence until switched off. Open files use `.wav.part`; only
+successfully closed files become `.wav` and can be archived.
+
+The Ansible-managed archive timer copies completed WAVs to Beelink's Samba
+archive using rsync over SSH, retries failures, and keeps each local original
+for seven days after a successful transfer. Deploy with
+`just deploy-aswitch-recordings` from the repository root. See
+[the recording retrieval workflow](../../docs/aswitch.md#retrieving-vinyl-recordings)
+for retrieval, configuration and MQTT sensor setup.
 
 | Env var | Default | Description |
 |---|---|---|
