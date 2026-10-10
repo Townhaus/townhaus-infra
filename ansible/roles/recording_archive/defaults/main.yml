@@ -1,0 +1,11 @@
+---
+recording_archive_enabled: false
+recording_archive_inventory_host: "{{ groups['townhaus_caddy'] | first }}"
+recording_archive_host: "{{ hostvars[recording_archive_inventory_host].ansible_host | default(recording_archive_inventory_host) }}"
+recording_archive_user: "{{ hostvars[recording_archive_inventory_host].samba_archive_user | default('saegey') }}"
+recording_archive_group: "{{ hostvars[recording_archive_inventory_host].townhaus_caddy_group | default(recording_archive_user) }}"
+recording_archive_root: "{{ hostvars[recording_archive_inventory_host].samba_archive_path | default('/srv/storage/archive') }}"
+recording_archive_destination: "{{ recording_archive_root }}/recordings/vinyl"
+recording_archive_retention_days: 7
+recording_archive_identity: "{{ aswitch_app_dir }}/.archive_ed25519"
+recording_archive_known_hosts: "{{ aswitch_app_dir }}/.archive_known_hosts"

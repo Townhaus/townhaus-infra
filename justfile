@@ -30,6 +30,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_recordings.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
@@ -100,6 +101,10 @@ deploy-aswitch-wifi:
 # Quickly refresh aswitch's Groovenet ingest client, Caddy CA trust, and route.
 deploy-aswitch-ingest:
     ansible-playbook ansible/playbooks/aswitch_ingest.yml --ask-become-pass
+
+# Install completed-recording transfers and seven-day local retention.
+deploy-aswitch-recordings:
+    ansible-playbook ansible/playbooks/aswitch_recordings.yml --ask-become-pass
 
 # Quickly apply Shairport routing changes without running the full Pi playbook.
 deploy-aswitch-airplay:

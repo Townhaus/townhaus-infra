@@ -103,9 +103,10 @@ class RecordingWriter(threading.Thread):
                     self._close_wave_file()
                     self.stop_event.set()
             except Exception as exc:
-                self.last_error = str(exc)
+                with self.state_lock:
+                    self.last_error = str(exc)
                 self.logger.exception("Recording writer error")
-                self._close_wave_file()
+                self._close_wave_file(finalize=False)
                 with self.state_lock:
                     self.recording_enabled = False
             finally:
@@ -114,12 +115,14 @@ class RecordingWriter(threading.Thread):
         self._close_wave_file()
 
     def enqueue_audio(self, pcm_bytes):
-        if not self.recording_enabled:
-            return
+        with self.state_lock:
+            if not self.recording_enabled:
+                return
         try:
             self.queue.put_nowait(("audio", pcm_bytes))
         except queue.Full:
-            self.dropped_blocks += 1
+            with self.state_lock:
+                self.dropped_blocks += 1
 
     def set_recording(self, enabled):
         with self.state_lock:
@@ -158,8 +161,8 @@ class RecordingWriter(threading.Thread):
             self._close_wave_file()
 
     def _open_wave_file(self):
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        path = self.output_dir / f"audio-{timestamp}.wav"
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        path = self.output_dir / f"audio-{timestamp}.wav.part"
         wave_file = wave.open(str(path), "wb")
         wave_file.setnchannels(self.channels)
         wave_file.setsampwidth(WAV_SAMPLE_WIDTH_BYTES)
@@ -169,7 +172,7 @@ class RecordingWriter(threading.Thread):
             self.current_path = path
         self.logger.info("Recording started: %s", path)
 
-    def _close_wave_file(self):
+    def _close_wave_file(self, finalize=True):
         with self.state_lock:
             wave_file = self.current_wave
             path = self.current_path
@@ -178,7 +181,12 @@ class RecordingWriter(threading.Thread):
 
         if wave_file is not None:
             wave_file.close()
-            self.logger.info("Recording stopped: %s", path)
+            if finalize:
+                completed_path = path.with_suffix("")
+                path.replace(completed_path)
+                self.logger.info("Recording stopped: %s", completed_path)
+            else:
+                self.logger.warning("Unfinished recording retained: %s", path)
 
     def _write_audio(self, pcm_bytes):
         with self.state_lock:

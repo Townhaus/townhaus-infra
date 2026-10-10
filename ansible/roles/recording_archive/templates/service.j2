@@ -1,0 +1,16 @@
+[Unit]
+Description=Archive completed vinyl recordings to Beelink
+Wants=network-online.target
+After=network-online.target audio_activity.service
+
+[Service]
+Type=oneshot
+User={{ ansible_user }}
+WorkingDirectory={{ aswitch_app_dir }}
+EnvironmentFile={{ aswitch_app_dir }}/.env
+EnvironmentFile={{ aswitch_app_dir }}/.recording-archive.env
+ExecStart={{ aswitch_app_dir }}/.venv/bin/python {{ aswitch_app_dir }}/recording_archive.py
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=infinity
+UMask=0007

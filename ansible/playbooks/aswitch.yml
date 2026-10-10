@@ -38,6 +38,8 @@
     - role: camilladsp
       when: camilladsp_enabled | default(true) | bool
     - role: aswitch_services
+    - role: recording_archive
+      when: recording_archive_enabled | bool
     - role: beszel_agent
     - role: package_update_report
 
