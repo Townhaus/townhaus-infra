@@ -193,6 +193,13 @@ Tailscale IP:
 - Omarchy/Linux: connect to `smb://beelink/archive` in the file manager.
 
 Sign in as the configured Samba account using the password stored in 1Password.
+
+The share enables Samba's `fruit` and `streams_xattr` modules so compatible
+Mac clients can receive Finder metadata during directory listings. After
+deploying this change, eject all SMB shares from Beelink and reconnect to
+negotiate Apple's SMB extensions, then compare opening the same folder in
+Finder. Resource forks use Samba's default `._` sidecar files.
+
 The existing NFS music share remains managed separately by the `nfs_server`
 role.
 
