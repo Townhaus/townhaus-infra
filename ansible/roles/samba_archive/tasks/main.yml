@@ -30,9 +30,11 @@
     fail_msg: Failed to resolve the Samba archive password from 1Password.
   no_log: true
 
-- name: Install Samba server
+- name: Install Samba server and VFS modules
   ansible.builtin.apt:
-    name: samba
+    name:
+      - samba
+      - samba-vfs-modules
     state: present
     update_cache: true
   become: true
