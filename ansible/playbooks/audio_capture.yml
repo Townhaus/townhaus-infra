@@ -79,6 +79,7 @@
       loop:
         - audio_activity.py
         - groovenet_ingest.py
+        - live_audio.py
       notify: Restart Vinyl Capture
 
     - name: Configure capture while preserving existing MQTT credentials

@@ -16,6 +16,7 @@ import paho.mqtt.client as mqtt
 import sounddevice as sd
 
 from groovenet_ingest import GroovenetIngest
+from live_audio import LiveAudioForwarder
 
 AUDIO_DEVICE = os.environ.get("AUDIO_DEVICE", "plughw:CARD=CODEC,DEV=0")
 AUDIO_CAPTURE_CHANNELS = int(os.environ.get("AUDIO_CAPTURE_CHANNELS", "2"))
@@ -24,6 +25,11 @@ AUDIO_CHANNEL_MAP = tuple(
     int(channel) - 1 for channel in os.environ.get("AUDIO_CHANNEL_MAP", "1,2").split(",")
 )
 AUDIO_MQTT_TOPIC_PREFIX = os.environ.get("AUDIO_MQTT_TOPIC_PREFIX", "aswitch").strip("/")
+AUDIO_LIVE_HOST = os.environ.get("AUDIO_LIVE_HOST", "")
+AUDIO_LIVE_PORT = int(os.environ.get("AUDIO_LIVE_PORT", "8097"))
+AUDIO_LIVE_TOKEN = os.environ.get("AUDIO_LIVE_TOKEN", "")
+AUDIO_LIVE_COMMAND_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_live/set"
+AUDIO_LIVE_AVAILABILITY_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_live/availability"
 MQTT_HOST = os.environ.get("MQTT_HOST", "homeassistant.local")
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
@@ -230,6 +236,7 @@ class AudioActivityMonitor:
         self.recording_writer = None
         self.capture_thread = None
         self.groovenet_ingest = None
+        self.live_forwarder = None
 
     def _build_mqtt_client(self):
         client = mqtt.Client(
@@ -238,6 +245,7 @@ class AudioActivityMonitor:
         )
         if MQTT_USERNAME:
             client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+        client.will_set(AUDIO_LIVE_AVAILABILITY_TOPIC, "offline", qos=1, retain=True)
 
         client.on_connect = self.on_connect
         client.on_disconnect = self.on_disconnect
@@ -248,10 +256,15 @@ class AudioActivityMonitor:
     def on_connect(self, client, userdata, flags, reason_code, properties):
         self.logger.info("Connected to MQTT: reason_code=%s", reason_code)
         client.subscribe(RECORDING_COMMAND_TOPIC)
+        if self.live_forwarder is not None:
+            client.subscribe(AUDIO_LIVE_COMMAND_TOPIC)
+            client.publish(AUDIO_LIVE_AVAILABILITY_TOPIC, "online", qos=1, retain=True)
         self.publish_activity_state()
         self.publish_recording_state(force=True)
 
     def on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
+        if self.live_forwarder is not None:
+            self.live_forwarder.set_enabled(False)
         if self.stop_event.is_set():
             self.logger.info("Disconnected from MQTT")
             return
@@ -259,6 +272,10 @@ class AudioActivityMonitor:
 
     def on_message(self, client, userdata, msg):
         payload = normalize_payload(msg.payload)
+        if msg.topic == AUDIO_LIVE_COMMAND_TOPIC:
+            if not msg.retain and self.live_forwarder is not None and payload in {"on", "off"}:
+                self.live_forwarder.set_enabled(payload == "on")
+            return
         if msg.topic != RECORDING_COMMAND_TOPIC:
             return
 
@@ -329,6 +346,8 @@ class AudioActivityMonitor:
 
         if self.recording_writer is not None:
             self.recording_writer.enqueue_audio(pcm_bytes)
+        if self.live_forwarder is not None:
+            self.live_forwarder.write(pcm_bytes)
         if self.groovenet_ingest is not None and (
             not GROOVENET_INGEST_ONLY_WHEN_ACTIVE or self.is_active
         ):
@@ -346,7 +365,7 @@ class AudioActivityMonitor:
                 return
 
             # All consumers share this stereo selection from one device read.
-            # Future network streaming must enqueue here without blocking capture.
+            # Live network forwarding only enqueues; it never blocks capture.
             self.process_audio_block(indata[:, AUDIO_CHANNEL_MAP], overflowed=overflowed)
 
     def update_activity_state(self):
@@ -552,6 +571,18 @@ class AudioActivityMonitor:
         sample_rate = self.resolve_input_settings()
         self.start_recording_writer()
         self.start_groovenet_ingest()
+        if AUDIO_LIVE_HOST and AUDIO_LIVE_TOKEN:
+            self.live_forwarder = LiveAudioForwarder(
+                AUDIO_LIVE_HOST,
+                AUDIO_LIVE_PORT,
+                AUDIO_MQTT_TOPIC_PREFIX,
+                AUDIO_LIVE_TOKEN,
+                sample_rate,
+                lambda status: self.client.publish(
+                    f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_live/status", status, retain=True
+                ),
+            )
+            self.live_forwarder.start()
 
         self.client.connect_async(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE)
         self.client.loop_start()
@@ -598,6 +629,9 @@ class AudioActivityMonitor:
                 self.recording_writer.stop()
             if self.groovenet_ingest is not None:
                 self.groovenet_ingest.stop()
+            if self.live_forwarder is not None:
+                self.live_forwarder.stop()
+            self.client.publish(AUDIO_LIVE_AVAILABILITY_TOPIC, "offline", qos=1, retain=True)
             self.client.publish(RECORDING_STATE_TOPIC, "off", retain=True)
             self.client.disconnect()
             self.client.loop_stop()

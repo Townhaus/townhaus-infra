@@ -49,6 +49,14 @@ server's idempotency key. On aswitch it is gated by the RMS activity state;
 discard a partial window when entering an intentional inactive period rather
 than joining audio from separate playback sessions.
 
+**Live streaming** — `live_audio.py` forwards the selected stereo PCM through
+a bounded, nonblocking queue to Beelink. Never perform socket I/O on the
+capture thread or replay stale audio after reconnect. Live settings use the
+separate optional `.live-audio.env` systemd environment file. Beelink controls
+both sources and the tunnel through MQTT discovery; see
+[`docs/vinyl-live.md`](../../docs/vinyl-live.md). Retained live `on` commands
+must be ignored. Forwarding and the tunnel start off after a restart.
+
 **Recording archives** — Open WAVs must use `.wav.part`; promote to `.wav`
 only after successful close. The archive worker runs separately and selects
 only completed timestamped WAVs. Retention starts at successful transfer and
@@ -115,6 +123,7 @@ Secret `.env` files (gitignored): `env/aswitch.env`, `env/pi-cam.env`, and any f
 Recording finalization, transfers and retention have automated tests:
 
 ```bash
+python3 -m pip install -r services/aswitch/tests/requirements.txt
 PYTHONPATH=services/aswitch python3 -m unittest discover -s services/aswitch/tests -v
 ```
 

@@ -18,4 +18,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["amp_trigger", "aswitch", "audio_activity", "dac_status", "ir_logger", "preamp_ir_codes"]
+known-first-party = ["amp_trigger", "aswitch", "audio_activity", "dac_status", "groovenet_ingest", "ir_logger", "live_audio", "preamp_ir_codes", "recording_archive"]

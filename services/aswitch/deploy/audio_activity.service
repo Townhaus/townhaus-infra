@@ -8,6 +8,7 @@ Type=simple
 User=__ASWITCH_USER__
 WorkingDirectory=__ASWITCH_REMOTE_DIR__
 EnvironmentFile=-__ASWITCH_REMOTE_DIR__/.env
+EnvironmentFile=-__ASWITCH_REMOTE_DIR__/.live-audio.env
 ExecStart=__ASWITCH_REMOTE_DIR__/.venv/bin/python __ASWITCH_REMOTE_DIR__/audio_activity.py
 Restart=always
 RestartSec=3

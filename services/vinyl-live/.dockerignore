@@ -1,0 +1,5 @@
+.env
+secrets
+control
+tests
+__pycache__

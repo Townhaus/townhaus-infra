@@ -57,6 +57,7 @@ jobs:
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-groovenet.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
+          ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-vinyl-live.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
@@ -89,3 +90,25 @@ jobs:
 
       - name: Check local Markdown links
         run: python3 scripts/check-markdown-links.py README.md docs services
+
+  live-audio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install capture test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 rsync
+          pip install -r services/aswitch/tests/requirements.txt
+      - name: Test shared capture and live forwarding
+        run: PYTHONPATH=services/aswitch python -m unittest discover -s services/aswitch/tests -v
+      - name: Build the live streaming image
+        run: docker build -t vinyl-live:test services/vinyl-live
+      - name: Test controls and simultaneous MP3 streams
+        run: >-
+          docker run --rm --network none
+          -v "$GITHUB_WORKSPACE/services/vinyl-live/tests:/tests:ro"
+          vinyl-live:test python -m unittest discover -s /tests -v

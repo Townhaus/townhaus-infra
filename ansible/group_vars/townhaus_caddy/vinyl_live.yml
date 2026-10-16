@@ -1,0 +1,11 @@
+---
+vinyl_live_app_dir: /srv/docker/vinyl-live
+vinyl_live_bind_ip: "{{ ansible_host | default(inventory_hostname) }}"
+vinyl_live_ingest_port: 8097
+vinyl_live_listen_port: 8098
+# Beelink does not resolve homeassistant.local; use the same host as Caddy's HA route.
+vinyl_live_mqtt_host: 192.168.2.91
+# An empty token reference installs LAN streaming only.
+vinyl_live_tunnel_token_ref: ""
+vinyl_live_mqtt_user_ref: op://Homelab/MQTT/username
+vinyl_live_mqtt_pass_ref: op://Homelab/MQTT/password

@@ -45,11 +45,11 @@ ssh saegey@pi-cam.local 'systemctl is-active audio_activity recording-archive.ti
 ssh saegey@pi-cam.local 'journalctl -u audio_activity -n 80 --no-pager'
 ```
 
-Live forwarding to Beelink is a follow-up feature for both sources. It should
-consume the selected stereo blocks from this same capture loop through a
-bounded queue and a separate network worker. A slow receiver must not stall
-capture; disconnects should discard stale live audio rather than replay a
-backlog. The transport, receiver, and listening format are not implemented.
+Optional [live streaming](vinyl-live.md) uses the same selected stereo blocks
+through a bounded queue and separate network worker. Beelink encodes two
+independent MP3 listener URLs, with source and public-tunnel switches in
+Home Assistant. Live forwarding starts off and never opens a second capture
+stream or blocks detection/recording on network I/O.
 
 ## AirPlay playback
 
