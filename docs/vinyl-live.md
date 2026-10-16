@@ -77,10 +77,17 @@ http://server:8081
 ```
 
 The connector shares the streaming Compose network, where `server` resolves
-to the listener service. Only the listener HTTP port is routed through the
+to the Caddy listening gateway. The gateway serves the full now-playing display
+from the existing app and sends `/pi-cam.mp3`, `/aswitch.mp3`, and `/healthz`
+to the private `audio` service. It joins the existing Caddy Docker network
+under the alias `vinyl-live-listener`; the app uses this origin for local
+audio and availability checks, independent of public tunnel state.
+The public page supports `/lounge` and `/living-room` links. Only read requests
+reach the app; publishing controls remain in Home Assistant.
+Only the listener HTTP port is routed through the
 tunnel. PCM ingest is a separate authenticated TCP port (`8097`) on the LAN.
-The public listener has only the two MP3 routes and a health endpoint; it
-has no control API. Public URLs are accessible to anyone who can reach the
+The public listener has the full display, two MP3 routes, and a health endpoint;
+it has no control API. Public URLs are accessible to anyone who can reach the
 configured hostname unless access restrictions are configured separately.
 
 Run:
@@ -97,7 +104,8 @@ The command prompts for the Pi sudo password.
 Only open WAVs inside the recording output directory block a restart;
 GrooveNET's temporary analysis windows do not.
 
-Lightweight control processes remain running in two containers. FFmpeg
+The audio controller, listening gateway, and tunnel supervisor remain running
+in three containers. FFmpeg
 processes and the actual Cloudflare connector run only on demand. Neither
 container has the Docker socket. The tunnel supervisor requires a renewed
 five-second lease from the controller and rejects leases older than its own

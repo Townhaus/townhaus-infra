@@ -23,6 +23,8 @@
           - now_playing_hostname == 'now-playing.home.arpa'
           - now_playing_ha_player is match('^media_player\.[a-z0-9_]+$')
           - now_playing_ha_vinyl_sensor is match('^binary_sensor\.[a-z0-9_]+$')
+          - now_playing_ha_lounge_player is match('^media_player\.[a-z0-9_]+$')
+          - now_playing_ha_lounge_vinyl_sensor is match('^binary_sensor\.[a-z0-9_]+$')
         fail_msg: >-
           Use main, a full commit SHA, or a vX.Y.Z release tag and valid HA entity IDs.
           The Caddy site is configured for now-playing.home.arpa.
@@ -84,12 +86,14 @@
 
   tasks:
     - name: Ensure Git is installed for the public source checkout
+      tags: [now_playing_bootstrap]
       ansible.builtin.package:
         name: git
         state: present
       become: true
 
     - name: Ensure the app and public certificate directories exist
+      tags: [now_playing_bootstrap]
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory

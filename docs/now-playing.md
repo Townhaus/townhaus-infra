@@ -24,10 +24,15 @@ directory and install the managed Caddyfile. 1Password may also request
 approval on the Mac. You need access to the HA token and the existing AdGuard
 credential references. No 1Password installation is required on the Beelink.
 
+For an existing installation with Git and the app directories already prepared,
+`ansible-playbook ansible/deploy-now-playing.yml --skip-tags now_playing_bootstrap`
+skips initial privileged setup. Updating the managed host Caddyfile still
+requires sudo if that file has changed.
+
 The playbook:
 
 1. Validates the existing Caddy container, network, and proposed configuration.
-2. Fetches and checks out the latest public app `main` (or the supplied commit/tag)
+2. Fetches and checks out the configured public app revision (or the supplied commit/tag)
    into `/srv/docker/now-playing/source` and prints the resolved commit SHA.
 3. Resolves `op://Homelab/Home Assistant Codex Token/token` on the Mac and writes
    the server `.env` on the Beelink with mode `0600`, suppressing secret output
@@ -45,10 +50,25 @@ Other Compose services are not pulled or recreated by this playbook.
 ## Configuration
 
 Defaults live in [now_playing.yml](../ansible/group_vars/townhaus_caddy/now_playing.yml).
-Each deployment fetches the latest `main` from GitHub. Push or merge application
-changes to that branch before running `just deploy-now-playing`; local unpushed
-changes in the separate application repo are not deployed. To deploy a specific
-commit or a published `vX.Y.Z` Git release tag:
+
+The display supports Living Room (`media_player.living_room_audio`) and Lounge
+(`media_player.lounge_audio`), with independent metadata, artwork, and stream
+availability. `/living-room` and `/lounge` select a room directly. The room
+selector remembers the browser's last choice, and Listen live joins only the
+selected room's existing broadcast.
+
+Deploy [vinyl live streaming](vinyl-live.md) to provide the private listening
+gateway. The app reaches it at `http://vinyl-live-listener:8081` on the existing
+Caddy network. The same full display is available at
+`https://live-stream.saegey.com` while Public Tunnel is enabled; the Cloudflare
+origin remains `http://server:8081`. Local display and audio continue with the
+tunnel off. Broadcast and tunnel controls stay in Home Assistant.
+
+The variables currently pin the multi-room application commit. Set
+`now_playing_source_ref: main` to follow the app's main branch instead.
+Only pushed application revisions can be deployed; local unpushed changes in
+the separate application repo are not deployed. To deploy a specific commit
+or a published `vX.Y.Z` Git release tag:
 
 ```sh
 just deploy-now-playing <full-commit-sha-or-release-tag>
@@ -97,8 +117,9 @@ no new certificate installation is needed. Otherwise follow the repo's
 public root on the iPad, and enable its trust in Certificate Trust Settings.
 Remote tailnet access still needs your existing `home.arpa` DNS and routing.
 
-There is no application login. Access relies on the existing LAN and tailnet
-policy. The HA token stays server-side and the proxy offers no playback controls.
+There is no application login. The local hostname uses the existing LAN and
+tailnet policy; the public hostname is accessible while Public Tunnel is on.
+The HA token stays server-side and the app offers listener controls only.
 
 ## Operations
 

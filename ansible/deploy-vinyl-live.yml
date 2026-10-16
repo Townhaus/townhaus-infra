@@ -74,6 +74,7 @@
         dest: "{{ vinyl_live_app_dir }}/{{ item }}"
         mode: "0644"
       loop:
+        - Caddyfile
         - Dockerfile
         - .dockerignore
         - compose.yaml
@@ -92,6 +93,7 @@
           LIVE_UID={{ ansible_user_uid }}
           LIVE_GID={{ ansible_user_gid }}
           TUNNEL_AVAILABLE={{ 'true' if vinyl_live_tunnel_token_ref | length > 0 else 'false' }}
+          CADDY_NETWORK={{ townhaus_caddy_compose_project_name }}_default
       no_log: true
 
     - name: Write protected MQTT credentials without Compose interpolation
@@ -118,10 +120,17 @@
       register: vinyl_live_tunnel_stop
       changed_when: "'Stopped' in vinyl_live_tunnel_stop.stderr"
 
+    - name: Stop existing listeners before moving the published ports
+      ansible.builtin.command:
+        argv: [docker, compose, -p, vinyl-live, stop, server, audio]
+        chdir: "{{ vinyl_live_app_dir }}"
+      register: vinyl_live_listeners_stop
+      changed_when: "'Stopped' in vinyl_live_listeners_stop.stderr"
+
     - name: Build and start the streaming control services with broadcasts off
       ansible.builtin.command:
         argv: >-
-          {{ ['docker', 'compose', '-p', 'vinyl-live', '--profile', 'public', 'up', '-d', '--build', '--force-recreate', 'server']
+          {{ ['docker', 'compose', '-p', 'vinyl-live', '--profile', 'public', 'up', '-d', '--build', '--force-recreate', 'audio', 'server']
              + (['tunnel'] if vinyl_live_tunnel_token_ref | length > 0 else []) }}
         chdir: "{{ vinyl_live_app_dir }}"
       changed_when: true

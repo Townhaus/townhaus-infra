@@ -1,8 +1,8 @@
 ---
-# PVR Analog is built from the latest main branch on each deployment.
+# Pin the multi-room release; set main to follow the app's main branch.
 # Override for a release or rollback: just deploy-now-playing <commit-or-tag>
 now_playing_repo: https://github.com/Public-Vinyl-Radio/now-playing.git
-now_playing_source_ref: main
+now_playing_source_ref: b618fd35a5d52dbc0762c73b70fb3a03c4444d07
 now_playing_app_dir: /srv/docker/now-playing
 now_playing_project_name: now-playing
 
@@ -20,6 +20,9 @@ now_playing_ha_token_ref: op://Homelab/Home Assistant Codex Token/token
 now_playing_ha_base_url: https://ha.home.arpa
 now_playing_ha_player: media_player.living_room_audio
 now_playing_ha_vinyl_sensor: binary_sensor.vinyl_listening_active
+now_playing_ha_lounge_player: media_player.lounge_audio
+now_playing_ha_lounge_vinyl_sensor: binary_sensor.lounge_vinyl_audio_activity
+now_playing_audio_base_url: http://vinyl-live-listener:8081
 now_playing_ha_artwork_origins: ""
 now_playing_ha_reconnect_base_ms: 1000
 now_playing_ha_reconnect_max_ms: 30000

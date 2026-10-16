@@ -60,7 +60,7 @@ deploy-stack:
 deploy-groovenet version="":
     ansible-playbook ansible/deploy-groovenet.yml {{ if version == "" { "" } else { "-e groovenet_image_tag=" + version } }}
 
-# Deploy PVR Analog from latest main, or override with a full SHA / vX.Y.Z Git tag.
+# Deploy PVR Analog from its configured revision, or override with a SHA / tag.
 [positional-arguments]
 deploy-now-playing ref="":
     #!/usr/bin/env zsh
