@@ -18,6 +18,12 @@ import sounddevice as sd
 from groovenet_ingest import GroovenetIngest
 
 AUDIO_DEVICE = os.environ.get("AUDIO_DEVICE", "plughw:CARD=CODEC,DEV=0")
+AUDIO_CAPTURE_CHANNELS = int(os.environ.get("AUDIO_CAPTURE_CHANNELS", "2"))
+# Physical input numbers are one-based in configuration, left then right.
+AUDIO_CHANNEL_MAP = tuple(
+    int(channel) - 1 for channel in os.environ.get("AUDIO_CHANNEL_MAP", "1,2").split(",")
+)
+AUDIO_MQTT_TOPIC_PREFIX = os.environ.get("AUDIO_MQTT_TOPIC_PREFIX", "aswitch").strip("/")
 MQTT_HOST = os.environ.get("MQTT_HOST", "homeassistant.local")
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
@@ -36,18 +42,16 @@ GROOVENET_INGEST_ONLY_WHEN_ACTIVE = os.environ.get(
     "GROOVENET_INGEST_ONLY_WHEN_ACTIVE", "false"
 ).lower() in {"1", "true", "yes", "on"}
 
-AUDIO_ACTIVITY_STATE_TOPIC = "aswitch/audio_activity/state"
-AUDIO_ACTIVITY_RMS_TOPIC = "aswitch/audio_activity/rms"
-RECORDING_COMMAND_TOPIC = "aswitch/audio_recording/set"
-RECORDING_STATE_TOPIC = "aswitch/audio_recording/state"
-RECORDING_FILE_TOPIC = "aswitch/audio_recording/file"
-RECORDING_ERROR_TOPIC = "aswitch/audio_recording/error"
+AUDIO_ACTIVITY_STATE_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_activity/state"
+AUDIO_ACTIVITY_RMS_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_activity/rms"
+RECORDING_COMMAND_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_recording/set"
+RECORDING_STATE_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_recording/state"
+RECORDING_FILE_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_recording/file"
+RECORDING_ERROR_TOPIC = f"{AUDIO_MQTT_TOPIC_PREFIX}/audio_recording/error"
 
 RMS_THRESHOLD = 0.01
 ACTIVE_HOLD_SECONDS = float(os.environ.get("AUDIO_ACTIVITY_ACTIVE_HOLD_SECONDS", "2.0"))
-INACTIVE_HOLD_SECONDS = float(
-    os.environ.get("AUDIO_ACTIVITY_INACTIVE_HOLD_SECONDS", "300.0")
-)
+INACTIVE_HOLD_SECONDS = float(os.environ.get("AUDIO_ACTIVITY_INACTIVE_HOLD_SECONDS", "300.0"))
 PUBLISH_RMS_DEBUG = True
 STATUS_LOG_INTERVAL_SECONDS = 30.0
 RMS_PUBLISH_INTERVAL_SECONDS = 1.0
@@ -230,7 +234,7 @@ class AudioActivityMonitor:
     def _build_mqtt_client(self):
         client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
-            client_id="aswitch-audio-activity",
+            client_id=f"{AUDIO_MQTT_TOPIC_PREFIX}-audio-activity",
         )
         if MQTT_USERNAME:
             client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
@@ -341,7 +345,9 @@ class AudioActivityMonitor:
                 self.stop_event.set()
                 return
 
-            self.process_audio_block(indata, overflowed=overflowed)
+            # All consumers share this stereo selection from one device read.
+            # Future network streaming must enqueue here without blocking capture.
+            self.process_audio_block(indata[:, AUDIO_CHANNEL_MAP], overflowed=overflowed)
 
     def update_activity_state(self):
         now = time.monotonic()
@@ -461,6 +467,19 @@ class AudioActivityMonitor:
         return None
 
     def resolve_input_settings(self):
+        if (
+            AUDIO_CAPTURE_CHANNELS < 2
+            or len(AUDIO_CHANNEL_MAP) != CHANNELS
+            or any(
+                channel < 0 or channel >= AUDIO_CAPTURE_CHANNELS for channel in AUDIO_CHANNEL_MAP
+            )
+        ):
+            self.logger.error(
+                "AUDIO_CHANNEL_MAP must select two inputs within AUDIO_CAPTURE_CHANNELS=%s",
+                AUDIO_CAPTURE_CHANNELS,
+            )
+            raise SystemExit(1)
+
         try:
             device_info = sd.query_devices(AUDIO_DEVICE, "input")
             self.input_device = AUDIO_DEVICE
@@ -493,19 +512,20 @@ class AudioActivityMonitor:
             else int(device_info["default_samplerate"]) or 44100
         )
         max_input_channels = int(device_info["max_input_channels"])
-        if max_input_channels < CHANNELS:
+        if max_input_channels < AUDIO_CAPTURE_CHANNELS:
             self.logger.error(
                 "Input device '%s' only provides %s input channel(s), need %s",
                 self.input_device_name or AUDIO_DEVICE,
                 max_input_channels,
-                CHANNELS,
+                AUDIO_CAPTURE_CHANNELS,
             )
             raise SystemExit(1)
         self.logger.info(
-            "Using audio input device '%s' at %s Hz with %s channels",
+            "Using audio input device '%s' at %s Hz with %s capture channels; stereo inputs=%s",
             self.input_device_name or AUDIO_DEVICE,
             self.sample_rate,
-            CHANNELS,
+            AUDIO_CAPTURE_CHANNELS,
+            tuple(channel + 1 for channel in AUDIO_CHANNEL_MAP),
         )
         return self.sample_rate
 
@@ -540,7 +560,7 @@ class AudioActivityMonitor:
             with sd.InputStream(
                 device=self.input_device,
                 samplerate=sample_rate,
-                channels=CHANNELS,
+                channels=AUDIO_CAPTURE_CHANNELS,
                 dtype=DTYPE,
                 blocksize=BLOCKSIZE,
                 latency=STREAM_LATENCY,

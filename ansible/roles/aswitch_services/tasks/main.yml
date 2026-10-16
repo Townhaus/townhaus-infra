@@ -33,6 +33,13 @@
     state: directory
     mode: "0755"
 
+- name: Install audio capture runtime
+  ansible.builtin.apt:
+    name: libportaudio2
+    state: present
+  become: true
+  when: "'audio_activity' in (aswitch_services | map(attribute='name') | list)"
+
 - name: Add static host entries needed by aswitch services
   ansible.builtin.lineinfile:
     path: /etc/hosts

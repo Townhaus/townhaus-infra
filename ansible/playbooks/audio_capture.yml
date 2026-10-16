@@ -1,0 +1,120 @@
+---
+# Refresh capture without changing AirPlay, DSP, GPIO services, or MQTT credentials.
+- name: Deploy vinyl capture and recording archives
+  hosts: aswitch:pi_cam
+  gather_facts: true
+
+  handlers:
+    - name: Update Capture Certificate Trust Store
+      ansible.builtin.command:
+        argv: [update-ca-certificates]
+      changed_when: false
+      become: true
+
+    - name: Restart Vinyl Capture
+      ansible.builtin.systemd:
+        name: audio_activity.service
+        state: restarted
+        daemon_reload: true
+      become: true
+
+  tasks:
+    - name: Check the existing service environment
+      ansible.builtin.stat:
+        path: "{{ aswitch_app_dir }}/.env"
+      register: audio_capture_environment
+
+    - name: Require an existing service installation
+      ansible.builtin.assert:
+        that: audio_capture_environment.stat.exists
+        fail_msg: Deploy this Pi's services before using the capture-only playbook.
+
+    - name: Install audio capture runtime
+      ansible.builtin.apt:
+        name: libportaudio2
+        state: present
+      become: true
+
+    - name: Route Groovenet through Caddy
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "^[^#]*\\s{{ item.name | regex_escape }}(?:\\s|$)"
+        line: "{{ item.address }} {{ item.name }}"
+        state: present
+      loop: "{{ aswitch_services_static_hosts }}"
+      become: true
+
+    - name: Persist the route for cloud-init hosts
+      ansible.builtin.lineinfile:
+        path: /etc/cloud/templates/hosts.debian.tmpl
+        regexp: "^[^#]*\\s{{ item.name | regex_escape }}(?:\\s|$)"
+        line: "{{ item.address }} {{ item.name }}"
+        state: present
+      loop: "{{ aswitch_services_static_hosts }}"
+      when: aswitch_services_static_hosts_persist_cloud_init | default(false) | bool
+      become: true
+
+    - name: Read Caddy internal root certificate
+      ansible.builtin.command:
+        argv: [docker, exec, caddy, cat, /data/caddy/pki/authorities/local/root.crt]
+      delegate_to: "{{ groups['townhaus_caddy'] | first }}"
+      register: audio_capture_caddy_ca
+      changed_when: false
+
+    - name: Trust the Groovenet server certificate
+      ansible.builtin.copy:
+        content: "{{ audio_capture_caddy_ca.stdout }}\n"
+        dest: /usr/local/share/ca-certificates/caddy-local.crt
+        mode: "0644"
+      become: true
+      notify:
+        - Update Capture Certificate Trust Store
+        - Restart Vinyl Capture
+
+    - name: Sync capture source files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../services/aswitch/{{ item }}"
+        dest: "{{ aswitch_app_dir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - audio_activity.py
+        - groovenet_ingest.py
+      notify: Restart Vinyl Capture
+
+    - name: Configure capture while preserving existing MQTT credentials
+      ansible.builtin.lineinfile:
+        path: "{{ aswitch_app_dir }}/.env"
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+        mode: "0600"
+      loop: "{{ aswitch_env_extra | dict2items | selectattr('key', 'match', '^(AUDIO_|RECORDING|GROOVENET_)') | list }}"
+      no_log: true
+      notify: Restart Vinyl Capture
+
+    - name: Deploy capture systemd service
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/aswitch_services/templates/service.j2"
+        dest: /etc/systemd/system/audio_activity.service
+        mode: "0644"
+      loop:
+        - name: audio_activity
+          script: audio_activity.py
+          after: [sound.target]
+      become: true
+      notify: Restart Vinyl Capture
+
+    - name: Apply capture changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable vinyl capture
+      ansible.builtin.systemd:
+        name: audio_activity.service
+        enabled: true
+        state: started
+        daemon_reload: true
+      become: true
+
+    - name: Configure completed-recording archives
+      ansible.builtin.include_role:
+        name: recording_archive
+      when: recording_archive_enabled | bool

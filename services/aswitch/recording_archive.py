@@ -11,7 +11,7 @@ from pathlib import Path
 
 import paho.mqtt.client as mqtt
 
-TOPIC = "aswitch/audio_recording/archive"
+TOPIC = f"{os.environ.get('AUDIO_MQTT_TOPIC_PREFIX', 'aswitch').strip('/')}/audio_recording/archive"
 RECORDING_NAME = re.compile(r"^audio-\d{8}-\d{6}(?:-\d{6})?\.wav$")
 
 

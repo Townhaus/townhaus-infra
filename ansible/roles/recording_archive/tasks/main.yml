@@ -17,12 +17,22 @@
     state: present
   become: true
 
-- name: Install rsync on the archive host
+- name: Check for rsync on the archive host
+  ansible.builtin.command:
+    argv: [rsync, --version]
+  delegate_to: "{{ recording_archive_inventory_host }}"
+  register: recording_archive_rsync
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install missing rsync on the archive host
   ansible.builtin.apt:
     name: rsync
     state: present
   delegate_to: "{{ recording_archive_inventory_host }}"
   become: true
+  when: recording_archive_rsync.rc != 0
 
 - name: Require the existing Samba archive root
   ansible.builtin.stat:
@@ -47,7 +57,7 @@
     - "{{ recording_archive_root }}/recordings"
     - "{{ recording_archive_destination }}"
   delegate_to: "{{ recording_archive_inventory_host }}"
-  become: true
+  become: "{{ recording_archive_user != (hostvars[recording_archive_inventory_host].ansible_user | default(ansible_user)) }}"
 
 - name: Generate a dedicated recording transfer key
   ansible.builtin.command:
@@ -71,7 +81,7 @@
     key_options: restrict
     state: present
   delegate_to: "{{ recording_archive_inventory_host }}"
-  become: true
+  become: "{{ recording_archive_user != (hostvars[recording_archive_inventory_host].ansible_user | default(ansible_user)) }}"
 
 - name: Read trusted archive server host key through Ansible
   ansible.builtin.slurp:

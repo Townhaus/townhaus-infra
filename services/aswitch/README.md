@@ -34,11 +34,15 @@ Aswitch is a Raspberry Pi-controlled audio switching and amplifier trigger syste
 
 | File | Purpose |
 |---|---|
+| `audio_activity.py` | Scarlett 6i6 inputs 3/4: vinyl activity, GrooveNET ingest, and stereo WAV recording |
+| `recording_archive.py` | Archives completed recordings under Beelink `recordings/vinyl/pi-cam` |
 | `dac_status.py` | USB DAC presence detector — polls `lsusb` and publishes MQTT state |
 | `amp_trigger.py` | GPIO relay control — switches the amp 12V trigger via MQTT |
 | `deploy/dac_status.service` | systemd unit for DAC presence detection |
 
-`pi-cam.local` runs `dac_status.py` and `amp_trigger.py`. There is no audio-source switching or audio recording on that host.
+`pi-cam.local` also runs `dac_status.py` and `amp_trigger.py`. Its vinyl capture
+uses the same settings as aswitch, with separate `pi-cam` MQTT topics and a
+GrooveNET source ID. See [pi-cam capture](../../docs/pi-cam.md#vinyl-capture).
 
 ### Deploy tooling
 
@@ -341,6 +345,13 @@ arecord -D plughw:CARD=CODEC,DEV=0 -f cd -d 5 test.wav
 
 ### Activity Defaults
 
+Capture uses one device stream for every consumer. `AUDIO_CAPTURE_CHANNELS`
+defaults to `2`; `AUDIO_CHANNEL_MAP` defaults to `1,2` and selects left/right
+using one-based hardware input numbers. For the Scarlett, capture all six
+channels and select `3,4`. `AUDIO_MQTT_TOPIC_PREFIX` defaults to `aswitch` and
+also names the broker client; set it to `pi-cam` on the second source. The
+archive worker reads the same prefix from the shared environment.
+
 | Constant | Default | Description |
 |---|---|---|
 | `RMS_THRESHOLD` | `0.01` | RMS level that counts as audio |
@@ -526,7 +537,10 @@ journalctl -u audio_activity.service -f
 
 ## Second Room — pi-cam.local (Fosi ZD3 + ESPHome IR)
 
-The `pi-cam.local` host is a separate room audio system. It is architecturally distinct from `aswitch.local`: there is no relay switching or GPIO wiring. Instead, amp control goes over IR via an M5Stack Atom Echo running ESPHome.
+The `pi-cam.local` host is a separate room audio system. It captures vinyl via
+the Scarlett 6i6, controls the amp trigger on GPIO27, and supports ZD3 IR
+commands through an M5Stack Atom Echo running ESPHome. It has no audio-source
+switching relay.
 
 ### Components
 

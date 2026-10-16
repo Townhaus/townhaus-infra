@@ -54,8 +54,9 @@ Run `just deploy-aswitch-recordings` to install the archive workflow on the
 existing aswitch setup. The full `just deploy-aswitch` deployment also includes
 it. Deployment configures a dedicated SSH key on aswitch, authorizes its public
 key on Beelink, and pins Beelink's SSH host key through the existing Ansible
-connection. Both hosts need sudo access during deployment; routine transfers
-run as the existing user without sudo.
+connection. The Pi needs sudo during deployment. Beelink needs sudo only if
+rsync must be installed or the archive account differs from its SSH account;
+routine transfers run as the existing user without sudo.
 
 Turn **Mixer Recording** on in Home Assistant to start a stereo, 16-bit,
 44.1 kHz WAV with the configured -6 dB attenuation. Turn it off to finalize

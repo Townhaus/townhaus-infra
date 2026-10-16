@@ -1,24 +1,49 @@
 ---
 aswitch_app_dir: "{{ remote_home }}/aswitch"
+recording_archive_enabled: true
+recording_archive_destination: "{{ recording_archive_root }}/recordings/vinyl/pi-cam"
 
 # Keep the DSP installation and presets available, but play directly to the ZD3.
 camilladsp_enabled: false
 
 aswitch_services:
+  - name: audio_activity
+    script: audio_activity.py
   - name: dac_status
     script: dac_status.py
   - name: amp_trigger
     script: amp_trigger.py
 
 aswitch_services_source_files:
+  - "{{ playbook_dir }}/../../services/aswitch/audio_activity.py"
+  - "{{ playbook_dir }}/../../services/aswitch/groovenet_ingest.py"
   - "{{ playbook_dir }}/../../services/aswitch/dac_status.py"
   - "{{ playbook_dir }}/../../services/aswitch/amp_trigger.py"
+
+aswitch_services_static_hosts:
+  - address: 192.168.2.151
+    name: groovenet.home.arpa
+aswitch_services_caddy_ca_enabled: true
 
 # 1Password secret references – resolved at deploy time with `op read`.
 aswitch_mqtt_user_ref: op://Homelab/MQTT/username
 aswitch_mqtt_pass_ref: op://Homelab/MQTT/password
 
 aswitch_env_extra:
+  AUDIO_DEVICE: "Scarlett 6i6 USB"
+  AUDIO_CAPTURE_CHANNELS: "6"
+  AUDIO_CHANNEL_MAP: "3,4"
+  AUDIO_MQTT_TOPIC_PREFIX: pi-cam
+  RECORDINGS_DIR: "{{ ansible_env.HOME }}/aswitch/recordings"
+  RECORDING_ATTENUATION_DB: "-6.0"
+  GROOVENET_INGEST_ENABLED: "true"
+  GROOVENET_INGEST_URL: "https://groovenet.home.arpa/api/audio/ingest"
+  GROOVENET_SOURCE_ID: pi-cam
+  GROOVENET_CHUNK_SECONDS: "15"
+  GROOVENET_SAMPLE_RATE: "44100"
+  GROOVENET_SPOOL_DIR: "{{ ansible_env.HOME }}/aswitch/groovenet-spool"
+  GROOVENET_INGEST_ONLY_WHEN_ACTIVE: "true"
+  AUDIO_ACTIVITY_INACTIVE_HOLD_SECONDS: "30"
   DAC_USB_ID: "152a:889b"
   DAC_MATCH_TEXT: "Fosi Audio ZD3"
   DAC_POLL_INTERVAL_SECONDS: "5"
