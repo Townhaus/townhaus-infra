@@ -20,10 +20,15 @@ Raspberry Pi MQTT relay controller and audio monitoring suite. Independent Pytho
 
 | File | Systemd unit | Purpose |
 |---|---|---|
+| `audio_activity.py` | `audio_activity.service` | Scarlett 6i6 inputs 3/4 — vinyl activity, GrooveNET, and stereo recording |
+| `recording_archive.py` | `recording-archive.service` / `.timer` | Archives completed WAVs to Beelink under `recordings/vinyl/pi-cam` |
 | `dac_status.py` | `dac_status.service` | USB DAC presence detector — polls `lsusb` and publishes connected/disconnected state |
 | `amp_trigger.py` | `amp_trigger.service` | GPIO relay switch — controls the amp 12V trigger via MQTT |
 
-`pi-cam.local` runs the DAC status monitor and amp trigger relay. It has no audio-source switching or audio recording.
+`pi-cam.local` also runs the DAC status monitor and amp trigger relay. Capture
+uses `AUDIO_CAPTURE_CHANNELS=6` and the one-based `AUDIO_CHANNEL_MAP=3,4` to select
+stereo before detection, recording, and ingest. `AUDIO_MQTT_TOPIC_PREFIX=pi-cam`
+isolates its MQTT topics and client ID; the default remains `aswitch`.
 
 ## Key patterns
 

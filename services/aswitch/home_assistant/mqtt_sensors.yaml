@@ -1,5 +1,12 @@
 mqtt:
   switch:
+    - name: "Lounge Vinyl Recording"
+      unique_id: pi_cam_vinyl_recording
+      command_topic: pi-cam/audio_recording/set
+      state_topic: pi-cam/audio_recording/state
+      payload_on: "on"
+      payload_off: "off"
+
     - name: "Amp Power"
       unique_id: aswitch_amp_power
       command_topic: "pi-cam/trigger"
@@ -22,6 +29,13 @@ mqtt:
       payload_off: "off"
 
   binary_sensor:
+    - name: "Lounge Vinyl Audio Activity"
+      unique_id: pi_cam_vinyl_audio_activity
+      state_topic: pi-cam/audio_activity/state
+      payload_on: "active"
+      payload_off: "inactive"
+      device_class: sound
+
     - name: "Preamp Power"
       unique_id: "aswitch_preamp_power"
       state_topic: "aswitch/preamp/trigger/state"
@@ -51,6 +65,13 @@ mqtt:
       icon: "mdi:usb-port"
 
   sensor:
+    - name: "Lounge Vinyl Recording Archive"
+      unique_id: pi_cam_vinyl_recording_archive
+      state_topic: pi-cam/audio_recording/archive
+      value_template: "{{ value_json.state }}"
+      json_attributes_topic: pi-cam/audio_recording/archive
+      icon: "mdi:folder-music"
+
     - name: "Mixer Recording Archive"
       unique_id: "aswitch_mixer_recording_archive"
       state_topic: "aswitch/audio_recording/archive"

@@ -30,6 +30,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/audio_capture.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_recordings.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
@@ -122,6 +123,14 @@ push-ir-env:
 deploy-pi-cam:
     ansible-playbook ansible/playbooks/pi_cam.yml --ask-become-pass
 
+# Configure Scarlett capture, GrooveNET, and recording archives on pi-cam.
+deploy-pi-cam-capture:
+    ansible-playbook ansible/playbooks/audio_capture.yml --limit pi_cam --ask-become-pass
+
+# Refresh capture and archive services on both vinyl sources.
+deploy-audio-capture:
+    ansible-playbook ansible/playbooks/audio_capture.yml --ask-become-pass
+
 # Deploy all three hosts.
 deploy:
     just deploy-beelink
@@ -192,4 +201,4 @@ logs-ir:
 
 # Show audio services on pi-cam.
 status-pi-cam:
-    ssh saegey@pi-cam.local "systemctl status camilladsp camillagui shairport-sync dac_status amp_trigger --no-pager"
+    ssh saegey@pi-cam.local "systemctl status audio_activity recording-archive.timer camilladsp camillagui shairport-sync dac_status amp_trigger --no-pager"
