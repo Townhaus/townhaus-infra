@@ -6,6 +6,6 @@ vinyl_live_listen_port: 8098
 # Beelink does not resolve homeassistant.local; use the same host as Caddy's HA route.
 vinyl_live_mqtt_host: 192.168.2.91
 # An empty token reference installs LAN streaming only.
-vinyl_live_tunnel_token_ref: ""
+vinyl_live_tunnel_token_ref: op://Homelab/Cloudflare Vinyl Tunnel/password
 vinyl_live_mqtt_user_ref: op://Homelab/MQTT/username
 vinyl_live_mqtt_pass_ref: op://Homelab/MQTT/password

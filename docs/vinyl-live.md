@@ -57,7 +57,7 @@ Set the optional token reference in
 `ansible/group_vars/townhaus_caddy/vinyl_live.yml`:
 
 ```yaml
-vinyl_live_tunnel_token_ref: op://Homelab/Cloudflare Vinyl Tunnel/token
+vinyl_live_tunnel_token_ref: op://Homelab/Cloudflare Vinyl Tunnel/password
 ```
 
 Only the reference belongs in Git. The deployment retrieves the token with
@@ -93,6 +93,7 @@ This deploys Beelink and both Pi forwarders together, then restarts capture
 with live forwarding off. It refuses to restart a Pi capture process that
 currently has an open recording. Beelink deployment runs as its existing
 Docker-capable SSH account; the Pis require sudo for their capture units.
+The command prompts for the Pi sudo password.
 Only open WAVs inside the recording output directory block a restart;
 GrooveNET's temporary analysis windows do not.
 

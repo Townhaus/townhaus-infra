@@ -73,7 +73,7 @@ deploy-now-playing ref="":
 
 # Deploy on-demand live audio and its Home Assistant MQTT controls.
 deploy-vinyl-live:
-    ansible-playbook ansible/deploy-vinyl-live.yml
+    ansible-playbook ansible/deploy-vinyl-live.yml --ask-become-pass
 
 # Show the PVR Analog service status on beelink.
 status-now-playing:
