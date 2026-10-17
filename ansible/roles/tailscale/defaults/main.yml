@@ -1,0 +1,7 @@
+---
+tailscale_package_state: present
+tailscale_service_enabled: true
+
+tailscale_repository_distribution: "{{ ansible_distribution | lower }}"
+tailscale_repository_release: "{{ ansible_distribution_release }}"
+tailscale_keyring_path: /usr/share/keyrings/tailscale-archive-keyring.gpg
