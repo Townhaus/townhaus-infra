@@ -1,0 +1,41 @@
+---
+- name: Install prerequisites for the Tailscale APT repository
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - gpg
+    state: present
+    update_cache: true
+  become: true
+
+- name: Install Tailscale APT repository signing key
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ tailscale_repository_distribution }}/{{ tailscale_repository_release }}.noarmor.gpg"
+    dest: "{{ tailscale_keyring_path }}"
+    mode: "0644"
+  become: true
+
+- name: Configure Tailscale APT repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by={{ tailscale_keyring_path }}]
+      https://pkgs.tailscale.com/stable/{{ tailscale_repository_distribution }}
+      {{ tailscale_repository_release }} main
+    filename: tailscale
+    state: present
+  become: true
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: "{{ tailscale_package_state }}"
+    update_cache: true
+  become: true
+
+- name: Enable and start Tailscale daemon
+  ansible.builtin.systemd:
+    name: tailscaled.service
+    enabled: "{{ tailscale_service_enabled }}"
+    state: started
+    daemon_reload: true
+  become: true

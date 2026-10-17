@@ -28,6 +28,7 @@
 
   roles:
     - role: motd
+    - role: tailscale
     - role: pi_wifi
     - role: alloy
       vars:

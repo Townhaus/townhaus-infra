@@ -35,6 +35,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_recordings.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/tailscale.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
 
@@ -127,6 +128,10 @@ push-ir-env:
 # Deploy all services to pi-cam.
 deploy-pi-cam:
     ansible-playbook ansible/playbooks/pi_cam.yml --ask-become-pass
+
+# Install and configure Tailscale on both Raspberry Pis.
+deploy-tailscale:
+    ansible-playbook ansible/playbooks/tailscale.yml --ask-become-pass
 
 # Configure Scarlett capture, GrooveNET, and recording archives on pi-cam.
 deploy-pi-cam-capture:

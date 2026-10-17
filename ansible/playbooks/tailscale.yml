@@ -1,0 +1,7 @@
+---
+- name: Manage Tailscale on the Raspberry Pi hosts
+  hosts: pis
+  gather_facts: true
+
+  roles:
+    - role: tailscale

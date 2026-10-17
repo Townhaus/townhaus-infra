@@ -566,6 +566,15 @@ The normal host playbooks also apply the banner. Override `motd_provider` or
 `motd_host_description` in group or host vars to customize the text. Host and
 OS details are refreshed at deployment time.
 
+## Tailscale on the Raspberry Pis
+
+Ansible installs Tailscale from its official APT repository and keeps the
+`tailscaled` service enabled on both `aswitch` and `pi-cam`. Manage it directly
+with `ansible-playbook ansible/playbooks/tailscale.yml --ask-become-pass`, or
+as part of either host's normal playbook. The role preserves existing Tailscale
+login state. After installing on a new host, run `sudo tailscale up` once on
+that host to authorize it in the tailnet.
+
 ## Package update monitoring
 
 Each managed Linux host runs a weekly APT audit on Monday morning. It refreshes
