@@ -97,9 +97,12 @@
 
 - name: Deploy recording completion handling
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../services/aswitch/audio_activity.py"
-    dest: "{{ aswitch_app_dir }}/audio_activity.py"
+    src: "{{ playbook_dir }}/../../services/aswitch/{{ item }}"
+    dest: "{{ aswitch_app_dir }}/{{ item }}"
     mode: "0644"
+  loop:
+    - audio_activity.py
+    - live_audio.py
   notify: Restart Recording Audio Monitor
 
 - name: Deploy recording archive worker

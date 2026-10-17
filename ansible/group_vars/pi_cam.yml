@@ -17,6 +17,7 @@ aswitch_services:
 aswitch_services_source_files:
   - "{{ playbook_dir }}/../../services/aswitch/audio_activity.py"
   - "{{ playbook_dir }}/../../services/aswitch/groovenet_ingest.py"
+  - "{{ playbook_dir }}/../../services/aswitch/live_audio.py"
   - "{{ playbook_dir }}/../../services/aswitch/dac_status.py"
   - "{{ playbook_dir }}/../../services/aswitch/amp_trigger.py"
 

@@ -12,6 +12,9 @@ Type=simple
 User={{ ansible_user }}
 WorkingDirectory={{ aswitch_app_dir }}
 EnvironmentFile=-{{ aswitch_app_dir }}/.env
+{% if item.name == 'audio_activity' %}
+EnvironmentFile=-{{ aswitch_app_dir }}/.live-audio.env
+{% endif %}
 ExecStart={{ aswitch_app_dir }}/.venv/bin/python {{ aswitch_app_dir }}/{{ item.script }}
 Restart=always
 RestartSec=3

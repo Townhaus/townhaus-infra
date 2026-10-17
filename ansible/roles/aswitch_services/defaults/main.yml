@@ -8,6 +8,7 @@ aswitch_services_source_files:
   - "{{ playbook_dir }}/../../services/aswitch/preamp_trigger.py"
   - "{{ playbook_dir }}/../../services/aswitch/preamp_led.py"
   - "{{ playbook_dir }}/../../services/aswitch/groovenet_ingest.py"
+  - "{{ playbook_dir }}/../../services/aswitch/live_audio.py"
 
 aswitch_services_disabled_services: []
 aswitch_services_static_hosts: []

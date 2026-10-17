@@ -26,6 +26,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-groovenet.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-vinyl-live.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
@@ -59,7 +60,7 @@ deploy-stack:
 deploy-groovenet version="":
     ansible-playbook ansible/deploy-groovenet.yml {{ if version == "" { "" } else { "-e groovenet_image_tag=" + version } }}
 
-# Deploy PVR Analog from latest main, or override with a full SHA / vX.Y.Z Git tag.
+# Deploy PVR Analog from its configured revision, or override with a SHA / tag.
 [positional-arguments]
 deploy-now-playing ref="":
     #!/usr/bin/env zsh
@@ -69,6 +70,10 @@ deploy-now-playing ref="":
         deploy_args+=(-e "now_playing_source_ref=$1")
     fi
     ansible-playbook "${deploy_args[@]}"
+
+# Deploy on-demand live audio and its Home Assistant MQTT controls.
+deploy-vinyl-live:
+    ansible-playbook ansible/deploy-vinyl-live.yml --ask-become-pass
 
 # Show the PVR Analog service status on beelink.
 status-now-playing:

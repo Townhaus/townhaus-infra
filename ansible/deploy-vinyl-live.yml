@@ -1,0 +1,216 @@
+---
+- name: Install on-demand vinyl streaming on Beelink
+  hosts: townhaus_caddy
+  gather_facts: true
+  tasks:
+    - name: Create streaming runtime directories
+      ansible.builtin.file:
+        path: "{{ vinyl_live_app_dir }}/{{ item }}"
+        state: directory
+        mode: "{{ '0700' if item == 'secrets' else '0755' }}"
+      loop: ["", secrets, control]
+
+    - name: Resolve streaming MQTT credentials from 1Password
+      ansible.builtin.command:
+        argv: [op, read, "{{ item }}"]
+      loop:
+        - "{{ vinyl_live_mqtt_user_ref }}"
+        - "{{ vinyl_live_mqtt_pass_ref }}"
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      register: vinyl_live_mqtt_credentials
+      changed_when: false
+      no_log: true
+
+    - name: Resolve the optional Cloudflare tunnel token
+      ansible.builtin.command:
+        argv: [op, read, "{{ vinyl_live_tunnel_token_ref }}"]
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      register: vinyl_live_tunnel_token
+      changed_when: false
+      no_log: true
+      when: vinyl_live_tunnel_token_ref | length > 0
+
+    - name: Write the protected tunnel token
+      ansible.builtin.copy:
+        content: "{{ vinyl_live_tunnel_token.stdout | trim }}\n"
+        dest: "{{ vinyl_live_app_dir }}/secrets/tunnel-token"
+        mode: "0600"
+      no_log: true
+      when: vinyl_live_tunnel_token_ref | length > 0
+
+    - name: Generate persistent private LAN credentials for each source
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - >-
+            import json, os, secrets;
+            path = {{ (vinyl_live_app_dir ~ '/secrets/source-tokens.json') | to_json }};
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600);
+            os.write(fd, json.dumps({name: secrets.token_urlsafe(32) for name in ['pi-cam', 'aswitch']}).encode());
+            os.close(fd)
+        creates: "{{ vinyl_live_app_dir }}/secrets/source-tokens.json"
+      no_log: true
+
+    - name: Read source credentials for deploying the Pi forwarders
+      ansible.builtin.slurp:
+        src: "{{ vinyl_live_app_dir }}/secrets/source-tokens.json"
+      register: vinyl_live_source_tokens
+      no_log: true
+
+    - name: Resolve the MQTT broker to a Docker-reachable address
+      ansible.builtin.command:
+        argv: [getent, ahostsv4, "{{ vinyl_live_mqtt_host | default(mqtt_host) }}"]
+      register: vinyl_live_mqtt_address
+      changed_when: false
+
+    - name: Copy the streaming service files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../services/vinyl-live/{{ item }}"
+        dest: "{{ vinyl_live_app_dir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - Caddyfile
+        - Dockerfile
+        - .dockerignore
+        - compose.yaml
+        - requirements.txt
+        - server.py
+        - tunnel.py
+
+    - name: Write the protected streaming runtime environment
+      ansible.builtin.copy:
+        dest: "{{ vinyl_live_app_dir }}/.env"
+        mode: "0600"
+        content: |
+          LIVE_BIND_IP={{ vinyl_live_bind_ip }}
+          LIVE_INGEST_PORT={{ vinyl_live_ingest_port }}
+          LIVE_LISTEN_PORT={{ vinyl_live_listen_port }}
+          LIVE_UID={{ ansible_user_uid }}
+          LIVE_GID={{ ansible_user_gid }}
+          TUNNEL_AVAILABLE={{ 'true' if vinyl_live_tunnel_token_ref | length > 0 else 'false' }}
+          CADDY_NETWORK={{ townhaus_caddy_compose_project_name }}_default
+      no_log: true
+
+    - name: Write protected MQTT credentials without Compose interpolation
+      ansible.builtin.copy:
+        dest: "{{ vinyl_live_app_dir }}/secrets/mqtt.json"
+        mode: "0600"
+        content: >-
+          {{ {'MQTT_HOST': vinyl_live_mqtt_address.stdout.split()[0],
+              'MQTT_PORT': mqtt_port,
+              'MQTT_USER': vinyl_live_mqtt_credentials.results[0].stdout,
+              'MQTT_PASS': vinyl_live_mqtt_credentials.results[1].stdout} | to_nice_json }}
+      no_log: true
+
+    - name: Check the streaming Compose configuration
+      ansible.builtin.command:
+        argv: [docker, compose, -p, vinyl-live, config, --quiet]
+        chdir: "{{ vinyl_live_app_dir }}"
+      changed_when: false
+
+    - name: Stop an existing tunnel supervisor before resetting streaming controls
+      ansible.builtin.command:
+        argv: [docker, compose, -p, vinyl-live, --profile, public, stop, tunnel]
+        chdir: "{{ vinyl_live_app_dir }}"
+      register: vinyl_live_tunnel_stop
+      changed_when: "'Stopped' in vinyl_live_tunnel_stop.stderr"
+
+    - name: Stop existing listeners before moving the published ports
+      ansible.builtin.command:
+        argv: [docker, compose, -p, vinyl-live, stop, server, audio]
+        chdir: "{{ vinyl_live_app_dir }}"
+      register: vinyl_live_listeners_stop
+      changed_when: "'Stopped' in vinyl_live_listeners_stop.stderr"
+
+    - name: Build and start the streaming control services with broadcasts off
+      ansible.builtin.command:
+        argv: >-
+          {{ ['docker', 'compose', '-p', 'vinyl-live', '--profile', 'public', 'up', '-d', '--build', '--force-recreate', 'audio', 'server']
+             + (['tunnel'] if vinyl_live_tunnel_token_ref | length > 0 else []) }}
+        chdir: "{{ vinyl_live_app_dir }}"
+      changed_when: true
+
+- name: Install live forwarding in the existing Pi capture services
+  hosts: aswitch:pi_cam
+  gather_facts: true
+  vars:
+    vinyl_live_server_host: "{{ groups['townhaus_caddy'] | first }}"
+    vinyl_live_source: "{{ 'pi-cam' if inventory_hostname in groups['pi_cam'] else 'aswitch' }}"
+
+  handlers:
+    - name: Restart Capture For Live Forwarding
+      ansible.builtin.systemd:
+        name: audio_activity.service
+        state: restarted
+        daemon_reload: true
+      become: true
+
+  tasks:
+    - name: Check that a recording is not currently open
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import os, pathlib, subprocess, sys
+            pid = subprocess.check_output(['systemctl', 'show', 'audio_activity.service', '-p', 'MainPID', '--value'], text=True).strip()
+            descriptors = pathlib.Path('/proc') / pid / 'fd'
+            active = False
+            if descriptors.is_dir():
+                environment = dict(entry.split(b'=', 1) for entry in (descriptors.parent / 'environ').read_bytes().split(b'\0') if b'=' in entry)
+                recordings = pathlib.Path(environment.get(b'RECORDINGS_DIR', b'./recordings').decode())
+                if not recordings.is_absolute():
+                    recordings = (descriptors.parent / 'cwd').resolve() / recordings
+                recordings = recordings.resolve()
+                for descriptor in descriptors.iterdir():
+                    try:
+                        target = os.readlink(descriptor)
+                        active |= target.endswith('.wav.part') and pathlib.Path(target).resolve().is_relative_to(recordings)
+                    except FileNotFoundError:
+                        pass
+            sys.exit(1 if active else 0)
+      changed_when: false
+      register: vinyl_live_recording_check
+      failed_when: false
+
+    - name: Require recording to be stopped before restarting capture
+      ansible.builtin.assert:
+        that: vinyl_live_recording_check.rc == 0
+        fail_msg: Finish the current vinyl recording, then rerun this deployment.
+
+    - name: Require the prepared Beelink streaming configuration
+      ansible.builtin.assert:
+        that: hostvars[vinyl_live_server_host].vinyl_live_source_tokens is defined
+        fail_msg: Run this playbook for Beelink and both Pis together.
+
+    - name: Copy capture and forwarding source files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../services/aswitch/{{ item }}"
+        dest: "{{ aswitch_app_dir }}/{{ item }}"
+        mode: "0644"
+      loop: [audio_activity.py, live_audio.py]
+      notify: Restart Capture For Live Forwarding
+
+    - name: Configure private forwarding without changing recording or detection settings
+      ansible.builtin.copy:
+        dest: "{{ aswitch_app_dir }}/.live-audio.env"
+        mode: "0600"
+        content: |
+          AUDIO_LIVE_HOST={{ hostvars[vinyl_live_server_host].vinyl_live_bind_ip }}
+          AUDIO_LIVE_PORT={{ hostvars[vinyl_live_server_host].vinyl_live_ingest_port }}
+          AUDIO_LIVE_TOKEN={{ (hostvars[vinyl_live_server_host].vinyl_live_source_tokens.content | b64decode | from_json)[vinyl_live_source] }}
+      no_log: true
+      notify: Restart Capture For Live Forwarding
+
+    - name: Add the separate live environment to the capture unit
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system/audio_activity.service
+        insertafter: "^EnvironmentFile=.*\\.env$"
+        line: "EnvironmentFile=-{{ aswitch_app_dir }}/.live-audio.env"
+      become: true
+      notify: Restart Capture For Live Forwarding

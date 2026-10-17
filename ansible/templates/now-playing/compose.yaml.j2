@@ -16,6 +16,9 @@ services:
       HA_BASE_URL: ${HA_BASE_URL:-https://ha.home.arpa}
       HA_MEDIA_PLAYER_ENTITY_ID: ${HA_MEDIA_PLAYER_ENTITY_ID:-media_player.living_room_audio}
       HA_VINYL_SENSOR_ENTITY_ID: ${HA_VINYL_SENSOR_ENTITY_ID:-binary_sensor.vinyl_listening_active}
+      HA_LOUNGE_MEDIA_PLAYER_ENTITY_ID: ${HA_LOUNGE_MEDIA_PLAYER_ENTITY_ID:-media_player.lounge_audio}
+      HA_LOUNGE_VINYL_SENSOR_ENTITY_ID: ${HA_LOUNGE_VINYL_SENSOR_ENTITY_ID:-binary_sensor.lounge_vinyl_audio_activity}
+      PVR_AUDIO_BASE_URL: ${PVR_AUDIO_BASE_URL:-http://vinyl-live-listener:8081}
       HA_TOKEN: ${HA_TOKEN:-}
       HA_ARTWORK_ORIGINS: ${HA_ARTWORK_ORIGINS:-}
       HA_RECONNECT_BASE_MS: ${HA_RECONNECT_BASE_MS:-1000}

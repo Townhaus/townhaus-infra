@@ -1,0 +1,112 @@
+services:
+  server:
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    restart: unless-stopped
+    init: true
+    user: "${LIVE_UID:-1000}:${LIVE_GID:-1000}"
+    depends_on:
+      audio:
+        condition: service_healthy
+    ports:
+      - "${LIVE_BIND_IP:-127.0.0.1}:${LIVE_LISTEN_PORT:-8098}:8081"
+    networks:
+      default:
+      caddy:
+        aliases: [vinyl-live-listener]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    read_only: true
+    tmpfs:
+      - /data:uid=${LIVE_UID:-1000},gid=${LIVE_GID:-1000}
+      - /config:uid=${LIVE_UID:-1000},gid=${LIVE_GID:-1000}
+    cap_drop: [ALL]
+    # The stock Caddy binary carries this file capability and needs it to exec.
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8081/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  audio:
+    build: .
+    image: townhaus-vinyl-live:local
+    restart: unless-stopped
+    init: true
+    user: "${LIVE_UID:-1000}:${LIVE_GID:-1000}"
+    environment:
+      MQTT_SETTINGS_FILE: /run/secrets/mqtt.json
+      TUNNEL_AVAILABLE: ${TUNNEL_AVAILABLE:-false}
+    ports:
+      - "${LIVE_BIND_IP:-127.0.0.1}:${LIVE_INGEST_PORT:-8097}:8080"
+    volumes:
+      - type: bind
+        source: ./secrets/mqtt.json
+        target: /run/secrets/mqtt.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./secrets/source-tokens.json
+        target: /run/secrets/source-tokens.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - ./control:/control
+    read_only: true
+    tmpfs: /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  tunnel:
+    image: townhaus-vinyl-live:local
+    profiles: [public]
+    command: [python, tunnel.py]
+    restart: unless-stopped
+    init: true
+    user: "${LIVE_UID:-1000}:${LIVE_GID:-1000}"
+    depends_on:
+      server:
+        condition: service_healthy
+    volumes:
+      - ./control:/control
+      - type: bind
+        source: ./secrets/tunnel-token
+        target: /run/secrets/tunnel-token
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs: /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:-townhaus-caddy_default}

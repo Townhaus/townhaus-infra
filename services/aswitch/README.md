@@ -327,6 +327,12 @@ Tracked automations:
 
 ## Audio Activity Detector
 
+Optional [on-demand live streaming](../../docs/vinyl-live.md) forwards the
+same selected stereo capture to Beelink. Home Assistant gets independent
+source switches and a public-tunnel switch through MQTT discovery. Deploy
+with `just deploy-vinyl-live`; live settings are kept in `.live-audio.env`
+so capture-only and full service deployments preserve them.
+
 `audio_activity.py` listens to the Behringer UFO202 (`plughw:CARD=CODEC,DEV=0`), computes RMS across stereo input, and applies hold timers before publishing state changes.
 
 The UFO202 identifies as:

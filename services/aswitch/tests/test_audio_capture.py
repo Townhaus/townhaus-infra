@@ -20,6 +20,7 @@ class CaptureTests(unittest.TestCase):
         expected = captured[:, [2, 3]]
         self.monitor.recording_writer = Mock()
         self.monitor.groovenet_ingest = Mock()
+        self.monitor.live_forwarder = Mock()
         self.monitor.is_active = True
         stream = Mock()
 
@@ -31,6 +32,7 @@ class CaptureTests(unittest.TestCase):
         with patch.object(audio, "AUDIO_CHANNEL_MAP", (2, 3)):
             self.monitor.capture_loop(stream)
         self.monitor.recording_writer.enqueue_audio.assert_called_once_with(expected.tobytes())
+        self.monitor.live_forwarder.write.assert_called_once_with(expected.tobytes())
         np.testing.assert_array_equal(
             self.monitor.groovenet_ingest.write.call_args.args[0], expected
         )
