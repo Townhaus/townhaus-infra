@@ -135,6 +135,14 @@
   become: true
   when: shairport_airplay2_enabled | bool
 
+- name: Reload systemd units before AirPlay 2 service startup
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
 - name: Clear AirPlay 2 service start limits before starting # noqa: command-instead-of-module
   ansible.builtin.command:
     argv:
@@ -142,7 +150,11 @@
       - reset-failed
       - "{{ shairport_airplay2_nqptp_service_name }}"
       - "{{ shairport_airplay2_service_name }}"
+  register: shairport_airplay2_reset_failed
   changed_when: false
+  failed_when:
+    - shairport_airplay2_reset_failed.rc != 0
+    - "'not loaded' not in shairport_airplay2_reset_failed.stderr"
   become: true
   when:
     - shairport_airplay2_enabled | bool
