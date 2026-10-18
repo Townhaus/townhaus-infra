@@ -89,7 +89,7 @@ ansible-playbook ansible/playbooks/aswitch_shairport.yml --limit aswitch --check
 
 After applying AirPlay 2, verify:
 
-- [ ] Safari on macOS can AirPlay audio from the groovenet web app's `<audio>` element to **Lounge Room Audio**.
+- [ ] Safari on macOS can AirPlay audio from the groovenet web app's `<audio>` element to **Lounge Room Audio** on pi-cam and **aswitch** on aswitch.
 - [ ] macOS system-audio AirPlay still works.
 - [ ] iPhone AirPlay still works.
 - [ ] MQTT metadata and cover art still publish under `pi-cam/shairport`.
