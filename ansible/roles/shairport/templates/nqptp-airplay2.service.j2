@@ -1,0 +1,18 @@
+[Unit]
+Description=NQPTP timing daemon for Shairport Sync AirPlay 2
+After=network.target
+StartLimitIntervalSec={{ shairport_start_limit_interval_sec }}
+StartLimitBurst={{ shairport_start_limit_burst }}
+
+[Service]
+Type=simple
+DynamicUser=yes
+AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SYS_NICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SYS_NICE
+NoNewPrivileges=yes
+ExecStart={{ shairport_airplay2_nqptp_prefix }}/bin/nqptp
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

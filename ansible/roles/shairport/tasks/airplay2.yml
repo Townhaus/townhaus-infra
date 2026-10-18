@@ -1,0 +1,170 @@
+---
+- name: Install AirPlay 2 build dependencies from the upstream Debian guide
+  ansible.builtin.apt:
+    name:
+      - autoconf
+      - automake
+      - build-essential
+      - ffmpeg
+      - git
+      - libasound2-dev
+      - libavahi-client-dev
+      - libavcodec-dev
+      - libavformat-dev
+      - libavutil-dev
+      - libconfig-dev
+      - libdbus-1-dev
+      - libgcrypt-dev
+      - libglib2.0-dev
+      - libmosquitto-dev
+      - libplist-dev
+      - libplist-utils
+      - libpopt-dev
+      - libsoxr-dev
+      - libsodium-dev
+      - libssl-dev
+      - libtool
+      - pkg-config
+      - uuid-dev
+      - xxd
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Install systemd development files required by Debian 13 builds
+  ansible.builtin.apt:
+    name: systemd-dev
+    state: present
+  become: true
+  when:
+    - ansible_distribution == "Debian"
+    - ansible_distribution_major_version | int >= 13
+
+- name: Check out pinned NQPTP release
+  ansible.builtin.git:
+    repo: https://github.com/mikebrady/nqptp.git
+    dest: "{{ shairport_airplay2_nqptp_source_dir }}"
+    version: "{{ shairport_airplay2_nqptp_version }}"
+    depth: 1
+    force: false
+  become: true
+
+- name: Generate NQPTP build files
+  ansible.builtin.command:
+    argv: [autoreconf, -fi]
+    chdir: "{{ shairport_airplay2_nqptp_source_dir }}"
+    creates: "{{ shairport_airplay2_nqptp_source_dir }}/configure"
+  become: true
+  when: not ansible_check_mode
+
+- name: Configure NQPTP under its own versioned prefix
+  ansible.builtin.command:
+    argv:
+      - ./configure
+      - "--prefix={{ shairport_airplay2_nqptp_prefix }}"
+    chdir: "{{ shairport_airplay2_nqptp_source_dir }}"
+    creates: "{{ shairport_airplay2_nqptp_source_dir }}/Makefile"
+  become: true
+  when: not ansible_check_mode
+
+- name: Build NQPTP
+  ansible.builtin.command:
+    argv: [make]
+    chdir: "{{ shairport_airplay2_nqptp_source_dir }}"
+    creates: "{{ shairport_airplay2_nqptp_source_dir }}/nqptp"
+  become: true
+  when: not ansible_check_mode
+
+- name: Install NQPTP under its own versioned prefix
+  ansible.builtin.command:
+    argv: [make, install]
+    chdir: "{{ shairport_airplay2_nqptp_source_dir }}"
+    creates: "{{ shairport_airplay2_nqptp_prefix }}/bin/nqptp"
+  become: true
+  when: not ansible_check_mode
+  notify: Restart AirPlay 2 timing service
+
+- name: Check out pinned Shairport Sync release
+  ansible.builtin.git:
+    repo: https://github.com/mikebrady/shairport-sync.git
+    dest: "{{ shairport_airplay2_source_dir }}"
+    version: "{{ shairport_airplay2_version }}"
+    depth: 1
+    force: false
+  become: true
+
+- name: Generate Shairport Sync build files
+  ansible.builtin.command:
+    argv: [autoreconf, -fi]
+    chdir: "{{ shairport_airplay2_source_dir }}"
+    creates: "{{ shairport_airplay2_source_dir }}/configure"
+  become: true
+  when: not ansible_check_mode
+
+- name: Configure Shairport Sync for AirPlay 2 and existing integrations
+  ansible.builtin.command:
+    argv:
+      - ./configure
+      - "--prefix={{ shairport_airplay2_prefix }}"
+      - "--sysconfdir={{ shairport_airplay2_prefix }}/etc"
+      - --with-alsa
+      - --with-soxr
+      - --with-avahi
+      - --with-ssl=openssl
+      - --with-airplay-2
+      - --with-mqtt-client
+      - --with-dbus-interface
+      - --with-mpris-interface
+      - --with-metadata
+      - --with-metadata-pipe
+    chdir: "{{ shairport_airplay2_source_dir }}"
+    creates: "{{ shairport_airplay2_source_dir }}/Makefile"
+  become: true
+  when: not ansible_check_mode
+
+- name: Build AirPlay 2 Shairport Sync
+  ansible.builtin.command:
+    argv: [make]
+    chdir: "{{ shairport_airplay2_source_dir }}"
+    creates: "{{ shairport_airplay2_source_dir }}/shairport-sync"
+  become: true
+  when: not ansible_check_mode
+
+- name: Install AirPlay 2 Shairport Sync under its own versioned prefix
+  ansible.builtin.command:
+    argv: [make, install]
+    chdir: "{{ shairport_airplay2_source_dir }}"
+    creates: "{{ shairport_airplay2_prefix }}/bin/shairport-sync"
+  become: true
+  when: not ansible_check_mode
+  notify: Restart AirPlay 2 Shairport Sync
+
+- name: Install custom NQPTP systemd unit
+  ansible.builtin.template:
+    src: nqptp-airplay2.service.j2
+    dest: "/etc/systemd/system/{{ shairport_airplay2_nqptp_service_name }}"
+    mode: "0644"
+  become: true
+  notify:
+    - Restart AirPlay 2 timing service
+
+- name: Install AirPlay 2 Shairport Sync configuration
+  ansible.builtin.template:
+    src: shairport-sync.conf.j2
+    dest: "{{ shairport_airplay2_config_path }}"
+    mode: "{{ shairport_config_mode }}"
+    backup: true
+    owner: root
+    group: audio
+  diff: false
+  become: true
+  notify: Restart AirPlay 2 Shairport Sync
+
+- name: Install AirPlay 2 Shairport Sync systemd unit
+  ansible.builtin.template:
+    src: shairport-sync-airplay2.service.j2
+    dest: "/etc/systemd/system/{{ shairport_airplay2_service_name }}"
+    mode: "0644"
+  become: true
+  notify: Restart AirPlay 2 Shairport Sync

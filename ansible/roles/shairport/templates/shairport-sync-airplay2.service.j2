@@ -1,0 +1,18 @@
+[Unit]
+Description=Shairport Sync AirPlay 2 receiver
+After=sound.target network-online.target avahi-daemon.service dbus.service {{ shairport_airplay2_nqptp_service_name }}
+Wants=network-online.target avahi-daemon.service dbus.service
+Requires={{ shairport_airplay2_nqptp_service_name }}
+StartLimitIntervalSec={{ shairport_start_limit_interval_sec }}
+StartLimitBurst={{ shairport_start_limit_burst }}
+
+[Service]
+Type=simple
+User=shairport-sync
+SupplementaryGroups=audio
+ExecStart={{ shairport_airplay2_prefix }}/bin/shairport-sync -c {{ shairport_airplay2_config_path }}
+Restart=on-failure
+RestartSec={{ shairport_restart_sec }}
+
+[Install]
+WantedBy=multi-user.target

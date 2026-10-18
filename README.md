@@ -60,6 +60,41 @@ see [Townhaus Infra in Herdr](docs/herdr.md).
 | `camillagui.service` | CamillaGUI web UI (`https://pi-cam`) |
 | `shairport-sync.service` | AirPlay receiver → ALSA Loopback → CamillaDSP |
 
+### Optional AirPlay 2 trial on pi-cam
+
+The Shairport role keeps the Debian `shairport-sync` package and its classic
+AirPlay 1 service installed. AirPlay 2 is an opt-in source build in a separate
+`/opt` prefix, using Shairport Sync 5.6 and its matching NQPTP 1.2.9 release.
+The signed upstream release tags resolve to Shairport Sync commit `9118bbc`
+and NQPTP commit `ab8fb67`; NQPTP 1.2.9 uses the `smi11` interface required
+by Shairport Sync 5.6. The build enables ALSA,
+Avahi, FFmpeg via `--with-airplay-2`, metadata pipe, MQTT, D-Bus and MPRIS.
+MQTT credentials continue to come from the existing 1Password references.
+
+To switch modes on pi-cam, change `shairport_airplay2_enabled` in
+`ansible/group_vars/pi_cam.yml` and run `ansible/playbooks/pi_cam_shairport.yml`.
+The aswitch receiver uses the same role and can be switched with the variable in
+`ansible/group_vars/aswitch.yml` and `ansible/playbooks/aswitch_shairport.yml`.
+Each playbook stops and disables the other receiver before starting the
+selected one. Set the variable to `false` to use the classic build. No host
+firewall role manages these Pi receivers; if firewall management is added,
+allow UDP ports 319 and 320 for NQPTP.
+
+Before applying a mode change, review the focused plan:
+
+```bash
+ansible-playbook ansible/playbooks/pi_cam_shairport.yml --limit pi_cam --check --diff --ask-become-pass
+ansible-playbook ansible/playbooks/aswitch_shairport.yml --limit aswitch --check --diff --ask-become-pass
+```
+
+After applying AirPlay 2, verify:
+
+- [ ] Safari on macOS can AirPlay audio from the groovenet web app's `<audio>` element to **Lounge Room Audio** on pi-cam and **aswitch** on aswitch.
+- [ ] macOS system-audio AirPlay still works.
+- [ ] iPhone AirPlay still works.
+- [ ] MQTT metadata and cover art still publish under `pi-cam/shairport`.
+- [ ] Compare playback with the classic build using a familiar record. To switch back, set `shairport_airplay2_enabled: false` and rerun the focused playbook.
+
 ### Audio signal chains
 
 ```
