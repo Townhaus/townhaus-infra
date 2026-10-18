@@ -4,6 +4,27 @@
     name: "{{ shairport_service_name }}"
     state: restarted
   become: true
+  when: not (shairport_airplay2_enabled | default(false) | bool)
+
+- name: Restart AirPlay 2 timing service
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_nqptp_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
+- name: Restart AirPlay 2 Shairport Sync
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
 
 - name: Reload And Restart Shairport-Sync
   ansible.builtin.systemd:
@@ -11,3 +32,4 @@
     state: restarted
     daemon_reload: true
   become: true
+  when: not (shairport_airplay2_enabled | default(false) | bool)

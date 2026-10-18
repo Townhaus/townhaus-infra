@@ -1,0 +1,17 @@
+---
+- name: Deploy Shairport Sync on pi-cam only
+  hosts: pi_cam
+  gather_facts: true
+
+  pre_tasks:
+    - name: Verify 1Password CLI is available
+      ansible.builtin.command:
+        argv: [op, --version]
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      changed_when: false
+      check_mode: false
+
+  roles:
+    - role: shairport

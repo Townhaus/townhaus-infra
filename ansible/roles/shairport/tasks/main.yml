@@ -21,6 +21,13 @@
       shairport_metadata_include_cover_art to "yes" or disable
       shairport_mqtt_publish_cover.
 
+- name: Restrict the optional AirPlay 2 build to pi-cam
+  ansible.builtin.assert:
+    that:
+      - "'pi_cam' in group_names"
+    fail_msg: "The optional Shairport Sync AirPlay 2 build is supported only on pi-cam."
+  when: shairport_airplay2_enabled | bool
+
 - name: Ensure Shairport Sync is installed
   ansible.builtin.apt:
     name: "{{ shairport_package_name }}"
@@ -32,6 +39,7 @@
     argv: [shairport-sync, -V]
   register: shairport_version_result
   changed_when: false
+  check_mode: false
 
 - name: Validate Shairport Sync MQTT support
   ansible.builtin.assert:
@@ -51,6 +59,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   register: shairport_mqtt_user_result
   changed_when: false
+  check_mode: false
   no_log: true
 
 - name: Resolve MQTT password from 1Password
@@ -61,6 +70,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   register: shairport_mqtt_pass_result
   changed_when: false
+  check_mode: false
   no_log: true
 
 - name: Store resolved MQTT credentials
@@ -82,6 +92,7 @@
     dest: "{{ shairport_config_path }}"
     mode: "{{ shairport_config_mode }}"
     backup: true
+  diff: false
   become: true
   notify: Restart Shairport-Sync
 
@@ -98,6 +109,12 @@
     mode: "0755"
   become: true
 
+- name: Check for an installed AirPlay 2 Shairport Sync unit
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ shairport_airplay2_service_name }}"
+  register: shairport_airplay2_unit
+  when: not (shairport_airplay2_enabled | bool)
+
 - name: Deploy Shairport Sync systemd override
   ansible.builtin.template:
     src: shairport-sync.override.conf.j2
@@ -106,18 +123,105 @@
   become: true
   notify: Reload And Restart Shairport-Sync
 
-- name: Enable and start Shairport Sync
+- name: Build optional AirPlay 2 Shairport Sync and NQPTP
+  ansible.builtin.import_tasks: airplay2.yml
+  when: shairport_airplay2_enabled | bool
+
+- name: Stop and disable classic Shairport Sync when AirPlay 2 is selected
+  ansible.builtin.systemd:
+    name: "{{ shairport_service_name }}"
+    enabled: false
+    state: stopped
+  become: true
+  when: shairport_airplay2_enabled | bool
+
+- name: Start the AirPlay 2 timing service
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_nqptp_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
+- name: Start the AirPlay 2 Shairport Sync service
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
+- name: Check AirPlay 2 Shairport Sync service state
+  ansible.builtin.command:
+    argv: [systemctl, is-active, "{{ shairport_airplay2_service_name }}"]
+  register: shairport_airplay2_service_active
+  changed_when: false
+  check_mode: false
+  failed_when: shairport_airplay2_service_active.stdout != "active"
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
+- name: Describe the AirPlay 2 service switch in check mode
+  ansible.builtin.debug:
+    msg: >-
+      Check mode only: apply will stop and disable {{ shairport_service_name }},
+      then enable and start {{ shairport_airplay2_nqptp_service_name }} and
+      {{ shairport_airplay2_service_name }} in that order.
+  when:
+    - shairport_airplay2_enabled | bool
+    - ansible_check_mode
+
+- name: Check for an installed AirPlay 2 timing unit
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ shairport_airplay2_nqptp_service_name }}"
+  register: shairport_airplay2_nqptp_unit
+  when: not (shairport_airplay2_enabled | bool)
+
+- name: Stop and disable AirPlay 2 Shairport Sync when classic is selected
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_service_name }}"
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  when:
+    - not (shairport_airplay2_enabled | bool)
+    - shairport_airplay2_unit.stat.exists
+
+- name: Stop and disable AirPlay 2 timing when classic is selected
+  ansible.builtin.systemd:
+    name: "{{ shairport_airplay2_nqptp_service_name }}"
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  when:
+    - not (shairport_airplay2_enabled | bool)
+    - shairport_airplay2_nqptp_unit.stat.exists
+
+- name: Ensure classic Shairport Sync is enabled and running
   ansible.builtin.systemd:
     name: "{{ shairport_service_name }}"
     enabled: true
     state: started
     daemon_reload: true
   become: true
+  when: not (shairport_airplay2_enabled | bool)
 
 - name: Check Shairport Sync service state
   ansible.builtin.command:
     argv: [systemctl, is-active, "{{ shairport_service_name }}"]
   register: shairport_service_active
   changed_when: false
+  check_mode: false
   failed_when: shairport_service_active.stdout != "active"
   become: true
+  when: not (shairport_airplay2_enabled | bool)

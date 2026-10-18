@@ -25,3 +25,14 @@ shairport_restart: on-failure
 shairport_restart_sec: 5
 shairport_start_limit_interval_sec: 60
 shairport_start_limit_burst: 3
+shairport_airplay2_enabled: false
+shairport_airplay2_version: "5.6"
+shairport_airplay2_nqptp_version: "1.2.9"
+shairport_airplay2_prefix: "/opt/shairport-sync-airplay2/{{ shairport_airplay2_version }}"
+shairport_airplay2_nqptp_prefix: "/opt/nqptp-airplay2/{{ shairport_airplay2_nqptp_version }}"
+shairport_airplay2_source_dir: "/usr/local/src/shairport-sync-{{ shairport_airplay2_version }}"
+shairport_airplay2_nqptp_source_dir: "/usr/local/src/nqptp-{{ shairport_airplay2_nqptp_version }}"
+shairport_airplay2_config_path: /etc/shairport-sync-airplay2.conf
+shairport_airplay2_service_name: shairport-sync-airplay2.service
+shairport_airplay2_nqptp_service_name: nqptp-airplay2.service
+shairport_metadata_pipe_name: /tmp/shairport-sync-metadata
