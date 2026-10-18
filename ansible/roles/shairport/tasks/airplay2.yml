@@ -80,7 +80,7 @@
   ansible.builtin.command:
     argv: [make, install]
     chdir: "{{ shairport_airplay2_nqptp_source_dir }}"
-    creates: "{{ shairport_airplay2_nqptp_prefix }}/sbin/nqptp"
+    creates: "{{ shairport_airplay2_nqptp_prefix }}/bin/nqptp"
   become: true
   when: not ansible_check_mode
   notify: Restart AirPlay 2 timing service

@@ -135,6 +135,19 @@
   become: true
   when: shairport_airplay2_enabled | bool
 
+- name: Clear AirPlay 2 service start limits before starting # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - reset-failed
+      - "{{ shairport_airplay2_nqptp_service_name }}"
+      - "{{ shairport_airplay2_service_name }}"
+  changed_when: false
+  become: true
+  when:
+    - shairport_airplay2_enabled | bool
+    - not ansible_check_mode
+
 - name: Start the AirPlay 2 timing service
   ansible.builtin.systemd:
     name: "{{ shairport_airplay2_nqptp_service_name }}"
