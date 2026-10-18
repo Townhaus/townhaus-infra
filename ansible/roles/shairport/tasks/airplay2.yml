@@ -15,6 +15,7 @@
       - libconfig-dev
       - libdbus-1-dev
       - libgcrypt-dev
+      - libglib2.0-dev
       - libmosquitto-dev
       - libplist-dev
       - libplist-utils
