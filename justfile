@@ -36,6 +36,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/tailscale.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/upgrade_beelink_trixie.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
 
@@ -87,6 +88,10 @@ logs-now-playing:
 # Apply beelink host roles, including backup timers and service configuration.
 configure-beelink:
     ansible-playbook ansible/playbooks/beelink.yml --ask-become-pass
+
+# Upgrade beelink from Debian 12 Bookworm to Debian 13 Trixie (long-running; asks for confirmation).
+upgrade-beelink-trixie:
+    ansible-playbook ansible/playbooks/upgrade_beelink_trixie.yml --ask-become-pass
 
 # Apply only the Uptime Kuma monitor and status-page configuration.
 configure-uptime-kuma:
