@@ -21,11 +21,11 @@
       shairport_metadata_include_cover_art to "yes" or disable
       shairport_mqtt_publish_cover.
 
-- name: Restrict the optional AirPlay 2 build to pi-cam
+- name: Restrict the optional AirPlay 2 build to supported Pi receivers
   ansible.builtin.assert:
     that:
-      - "'pi_cam' in group_names"
-    fail_msg: "The optional Shairport Sync AirPlay 2 build is supported only on pi-cam."
+      - group_names | intersect(['pi_cam', 'aswitch']) | length > 0
+    fail_msg: "The optional Shairport Sync AirPlay 2 build is supported only on pi-cam and aswitch."
   when: shairport_airplay2_enabled | bool
 
 - name: Ensure Shairport Sync is installed
