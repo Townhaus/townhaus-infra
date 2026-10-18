@@ -212,6 +212,10 @@ just
 # Deploy the Docker stack and host roles on beelink
 just deploy-beelink
 
+# Upgrade beelink from Debian 12 Bookworm to Debian 13 Trixie
+# Back up first; review the package plan when prompted. Services will be unavailable.
+just upgrade-beelink-trixie
+
 # Deploy either Pi
 just deploy-aswitch
 just deploy-pi-cam
@@ -524,11 +528,12 @@ Frigate runs as a Docker service on beelink with `network_mode: host` (required 
 
 All credentials (MQTT password, camera RTSP URLs, HomeKit PIN) are stored in 1Password and rendered into the config at deploy time — no plaintext secrets in the repo.
 
-### Upgrade to Frigate 0.18.0
+### Frigate 0.18 deployment
 
-`just deploy-beelink` performs the 0.18 upgrade. Before it pulls and starts the
-new pinned image, it detects a `0.17-0` runtime configuration, stops Frigate,
-and creates a consistent one-time backup at
+`just deploy-beelink` deploys the pinned Frigate release from the root
+`docker-compose.yml`. Before it pulls and starts the 0.18 release, it detects a
+`0.17-0` runtime configuration, stops Frigate, and creates a consistent
+one-time backup at
 `/srv/storage/frigate-backups/v0.17-pre-v0.18`. This includes both `config.yml`
 and `frigate.db`.
 

@@ -1,0 +1,163 @@
+---
+- name: Upgrade beelink from Debian 12 Bookworm to Debian 13 Trixie
+  hosts: townhaus_caddy
+  become: true
+  gather_facts: true
+
+  vars_prompt:
+    - name: upgrade_confirmation
+      prompt: >-
+        This will upgrade beelink to Debian 13 Trixie and reboot it.
+        Type upgrade-beelink-to-trixie to continue
+      private: false
+
+  tasks:
+    - name: Require explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - upgrade_confirmation == 'upgrade-beelink-to-trixie'
+        fail_msg: Upgrade cancelled.
+
+    - name: Require Debian 12 Bookworm
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Debian'
+          - ansible_distribution_major_version == '12'
+          - ansible_distribution_release == 'bookworm'
+        fail_msg: This playbook only upgrades Debian 12 Bookworm.
+
+    - name: Check that dpkg has no unfinished package operations
+      ansible.builtin.command: dpkg --audit
+      register: dpkg_audit
+      changed_when: false
+
+    - name: Require a clean dpkg state
+      ansible.builtin.assert:
+        that:
+          - dpkg_audit.stdout | trim == ''
+        fail_msg: Resolve the reported dpkg issues before upgrading.
+
+    - name: Check installed OpenSSH server version
+      ansible.builtin.command:
+        argv:
+          - dpkg-query
+          - -W
+          - "-f=${Version}"
+          - openssh-server
+      register: openssh_version
+      changed_when: false
+
+    - name: Require the Debian release-notes minimum OpenSSH version
+      ansible.builtin.command:
+        argv:
+          - dpkg
+          - --compare-versions
+          - "{{ openssh_version.stdout }}"
+          - ge
+          - 1:9.2p1-2+deb12u7
+      changed_when: false
+
+    - name: Require at least 10 GB free on the root filesystem
+      ansible.builtin.assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int > 10737418240
+        fail_msg: Free at least 10 GB on / before upgrading.
+
+    - name: Disable the Bookworm backports source
+      ansible.builtin.command:
+        argv:
+          - mv
+          - /etc/apt/sources.list.d/bookworm-backports.list
+          - /etc/apt/sources.list.d/bookworm-backports.list.disabled
+      args:
+        creates: /etc/apt/sources.list.d/bookworm-backports.list.disabled
+        removes: /etc/apt/sources.list.d/bookworm-backports.list
+
+    - name: Update Bookworm package indexes
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 0
+
+    - name: Bring Bookworm packages fully up to date first
+      ansible.builtin.apt:
+        upgrade: full
+        dpkg_options: force-confdef,force-confold
+        lock_timeout: 1800
+
+    - name: Point Debian base repositories at Trixie
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: "\\bbookworm\\b"
+        replace: trixie
+        backup: true
+
+    - name: Point Docker repository at Trixie
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/docker.sources
+        regexp: "(?m)^(Suites:\\s*)bookworm\\s*$"
+        replace: "\\1trixie"
+        backup: true
+
+    - name: Point Tailscale repository at Trixie
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/tailscale.list
+        regexp: "\\bbookworm\\b"
+        replace: trixie
+        backup: true
+
+    - name: Update Trixie package indexes
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 0
+
+    - name: Perform the minimal Trixie upgrade
+      ansible.builtin.apt:
+        upgrade: safe
+        dpkg_options: force-confdef,force-confold
+        lock_timeout: 1800
+
+    - name: Preview the full Trixie upgrade and proposed package removals # noqa: command-instead-of-module
+      ansible.builtin.command: apt-get --simulate full-upgrade
+      register: trixie_upgrade_preview
+      changed_when: false
+
+    - name: Show the full-upgrade package plan
+      ansible.builtin.debug:
+        var: trixie_upgrade_preview.stdout_lines
+
+    - name: Confirm the full-upgrade package plan
+      ansible.builtin.pause:
+        prompt: >-
+          Review the package plan above. Type apply-trixie-upgrade to start
+          the full upgrade and reboot
+      register: full_upgrade_confirmation
+
+    - name: Require confirmation of the full-upgrade plan
+      ansible.builtin.assert:
+        that:
+          - full_upgrade_confirmation.user_input == 'apply-trixie-upgrade'
+        fail_msg: Upgrade cancelled before the full package upgrade.
+
+    - name: Upgrade all packages to Debian 13 Trixie
+      ansible.builtin.apt:
+        upgrade: full
+        dpkg_options: force-confdef,force-confold
+        lock_timeout: 1800
+
+    - name: Reboot into the Trixie system
+      ansible.builtin.reboot:
+        reboot_timeout: 3600
+        connect_timeout: 30
+        post_reboot_delay: 15
+
+    - name: Verify Debian 13 Trixie after reboot
+      ansible.builtin.command: cat /etc/os-release
+      register: os_release
+      changed_when: false
+
+    - name: Confirm the host is running Debian 13
+      ansible.builtin.assert:
+        that:
+          - "'VERSION_ID=\"13\"' in os_release.stdout"
+          - "'VERSION_CODENAME=trixie' in os_release.stdout"
+        fail_msg: The host rebooted but does not report Debian 13 Trixie.
