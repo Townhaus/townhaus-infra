@@ -59,6 +59,14 @@ The configured playback path is:
 AirPlay → Shairport Sync → USB → Fosi ZD3
 ```
 
+The AirPlay 2 build's MPRIS metadata bridge publishes track details to the
+existing `pi-cam/shairport/{title,artist,album,genre,cover}` MQTT topics for the
+Home Assistant Shairport integration. Cover payloads are binary image data.
+The native Shairport MQTT client continues to publish playback events and
+status. The bridge is optional and can be disabled with
+`shairport_mpris_mqtt_bridge_enabled: false` in
+`ansible/group_vars/pi_cam.yml`.
+
 Shairport uses `auto` interpolation and sends 44.1 kHz, `S32_LE` audio directly
 to `plughw:CARD=ZD3,DEV=0`. The ZD3 controls volume.
 
@@ -78,10 +86,20 @@ subscription return automatically.
 Verify after deployment:
 
 ```bash
-ssh saegey@pi-cam.local 'systemctl is-active shairport-sync; systemctl is-active camilladsp camillagui camilladsp-recover.timer'
-ssh saegey@pi-cam.local 'journalctl -u shairport-sync -n 100 --no-pager'
+ssh saegey@pi-cam.local 'systemctl is-active shairport-sync-airplay2 shairport-mpris-mqtt; systemctl is-active shairport-sync.service camilladsp camillagui camilladsp-recover.timer'
+ssh saegey@pi-cam.local 'journalctl -u shairport-sync-airplay2 -u shairport-mpris-mqtt -n 100 --no-pager'
 ```
 
-Shairport should be active and the DSP units inactive. Compare startup time,
-track-change delay, and dropouts using the same AirPlay source. Direct output
-removes DSP processing and buffering, but AirPlay protocol latency still applies.
+The AirPlay 2 receiver and metadata bridge should be active; the classic
+receiver and DSP units should be inactive. After deployment, verify:
+
+- Safari playback from the GrooveNET web app's audio element to **Lounge Room Audio**.
+- macOS system-audio AirPlay and iPhone AirPlay to the receiver.
+- Home Assistant receives title, artist, album, and cover art after track changes.
+- Native `playing` and play-event MQTT topics continue to update.
+- Sound quality against the classic build using a familiar record. To switch
+  back, set `shairport_airplay2_enabled: false` in
+  `ansible/group_vars/pi_cam.yml` and run the same Shairport playbook.
+
+Direct output removes DSP processing and buffering, but AirPlay protocol latency
+still applies.

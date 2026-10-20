@@ -1,0 +1,16 @@
+---
+- name: Check for an installed Shairport MPRIS-to-MQTT bridge unit
+  ansible.builtin.stat:
+    path: /etc/systemd/system/shairport-mpris-mqtt.service
+  register: shairport_mpris_mqtt_bridge_unit
+
+- name: Stop and disable Shairport MPRIS-to-MQTT bridge when not selected
+  ansible.builtin.systemd:
+    name: shairport-mpris-mqtt.service
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_mpris_mqtt_bridge_unit.stat.exists
+    - not ansible_check_mode

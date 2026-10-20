@@ -135,6 +135,23 @@
         chdir: "{{ vinyl_live_app_dir }}"
       changed_when: true
 
+    - name: Install Vinyl Live Compose boot unit
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../services/vinyl-live/vinyl-live-compose.service.j2"
+        dest: /etc/systemd/system/vinyl-live-compose.service
+        mode: "0644"
+      become: true
+      tags: [vinyl_live_boot]
+
+    - name: Enable Vinyl Live Compose stack at boot
+      ansible.builtin.systemd:
+        name: vinyl-live-compose.service
+        enabled: true
+        state: started
+        daemon_reload: true
+      become: true
+      tags: [vinyl_live_boot]
+
 - name: Install live forwarding in the existing Pi capture services
   hosts: aswitch:pi_cam
   gather_facts: true

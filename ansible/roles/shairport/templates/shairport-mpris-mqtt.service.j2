@@ -1,0 +1,23 @@
+[Unit]
+Description=Publish Shairport Sync MPRIS metadata to MQTT
+After=dbus.service network-online.target {{ shairport_airplay2_service_name }}
+Wants=network-online.target
+PartOf={{ shairport_airplay2_service_name }}
+Requires={{ shairport_airplay2_service_name }}
+
+[Service]
+Type=simple
+User=shairport-sync
+SupplementaryGroups=audio
+EnvironmentFile=/etc/default/shairport-mpris-mqtt
+ExecStart=/usr/bin/python3 /usr/local/libexec/shairport-mpris-mqtt-bridge.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/tmp/shairport-sync/.cache/coverart
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

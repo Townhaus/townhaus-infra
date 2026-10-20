@@ -1,0 +1,68 @@
+---
+- name: Install MPRIS-to-MQTT bridge dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-dbus-next
+      - python3-paho-mqtt
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure Shairport MPRIS-to-MQTT bridge script directory exists
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install Shairport MPRIS-to-MQTT bridge script
+  ansible.builtin.copy:
+    src: shairport_mpris_mqtt_bridge.py
+    dest: /usr/local/libexec/shairport-mpris-mqtt-bridge.py
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  notify: Restart Shairport MPRIS-to-MQTT bridge
+
+- name: Install private MQTT credentials for Shairport bridge
+  ansible.builtin.template:
+    src: shairport-mpris-mqtt.env.j2
+    dest: /etc/default/shairport-mpris-mqtt
+    owner: root
+    group: shairport-sync
+    mode: "0640"
+  become: true
+  no_log: true
+  notify: Restart Shairport MPRIS-to-MQTT bridge
+
+- name: Install Shairport MPRIS-to-MQTT bridge systemd unit
+  ansible.builtin.template:
+    src: shairport-mpris-mqtt.service.j2
+    dest: /etc/systemd/system/shairport-mpris-mqtt.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - Reload systemd for Shairport MPRIS-to-MQTT bridge
+    - Restart Shairport MPRIS-to-MQTT bridge
+
+- name: Enable and start Shairport MPRIS-to-MQTT bridge
+  ansible.builtin.systemd:
+    name: shairport-mpris-mqtt.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when: not ansible_check_mode
+
+- name: Describe the MPRIS-to-MQTT bridge in check mode
+  ansible.builtin.debug:
+    msg: >-
+      Check mode only: apply will install the MPRIS-to-MQTT bridge and publish
+      MPRIS track metadata under {{ shairport_mqtt_topic }}/title, artist,
+      album, genre, and cover.
+  when: ansible_check_mode

@@ -122,6 +122,10 @@ deploy-aswitch-recordings:
 deploy-aswitch-airplay:
     ansible-playbook ansible/playbooks/aswitch_airplay.yml --ask-become-pass
 
+# Quickly apply Shairport routing and metadata bridge changes on pi-cam only.
+deploy-pi-cam-airplay:
+    ansible-playbook ansible/playbooks/pi_cam_shairport.yml --ask-become-pass
+
 # Fast deploy for the IR logger service on aswitch.
 deploy-ir:
     cd services/aswitch && ASWITCH_USER=saegey ASWITCH_SERVICE=ir_logger.service ./deploy/deploy.sh

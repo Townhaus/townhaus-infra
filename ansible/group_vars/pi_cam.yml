@@ -78,6 +78,7 @@ shairport_mqtt_client_id: shairport-living-room
 shairport_mqtt_publish_parsed: "yes"
 shairport_mqtt_publish_cover: "yes"
 shairport_mqtt_enable_remote: "no"
+shairport_mpris_mqtt_bridge_enabled: true
 shairport_systemd_after: >-
   {{ ['sound.target', 'camilladsp.service', 'network.target', 'nss-lookup.target']
      if (camilladsp_enabled | bool)

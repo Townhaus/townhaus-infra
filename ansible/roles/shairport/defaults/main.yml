@@ -36,3 +36,5 @@ shairport_airplay2_config_path: /etc/shairport-sync-airplay2.conf
 shairport_airplay2_service_name: shairport-sync-airplay2.service
 shairport_airplay2_nqptp_service_name: nqptp-airplay2.service
 shairport_metadata_pipe_name: /tmp/shairport-sync-metadata
+shairport_mpris_mqtt_bridge_enabled: false
+shairport_mpris_mqtt_client_id: shairport-mpris-metadata-bridge
