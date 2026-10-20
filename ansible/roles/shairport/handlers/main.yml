@@ -33,3 +33,18 @@
     daemon_reload: true
   become: true
   when: not (shairport_airplay2_enabled | default(false) | bool)
+
+- name: Reload systemd for Shairport MPRIS-to-MQTT bridge
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: Restart Shairport MPRIS-to-MQTT bridge
+  ansible.builtin.systemd:
+    name: shairport-mpris-mqtt.service
+    state: restarted
+    daemon_reload: true
+  become: true
+  when:
+    - shairport_mpris_mqtt_bridge_enabled | bool
+    - not ansible_check_mode

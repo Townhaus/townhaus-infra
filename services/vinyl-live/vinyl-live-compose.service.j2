@@ -1,0 +1,18 @@
+[Unit]
+Description=Vinyl Live Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+RequiresMountsFor={{ vinyl_live_app_dir }}
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ vinyl_live_app_dir }}
+ExecStart=/usr/bin/docker compose -p vinyl-live {% if vinyl_live_tunnel_token_ref | length > 0 %}--profile public {% endif %}up -d audio server{% if vinyl_live_tunnel_token_ref | length > 0 %} tunnel{% endif %}
+ExecStop=/usr/bin/docker compose -p vinyl-live {% if vinyl_live_tunnel_token_ref | length > 0 %}--profile public {% endif %}stop audio server{% if vinyl_live_tunnel_token_ref | length > 0 %} tunnel{% endif %}
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

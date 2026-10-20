@@ -28,6 +28,7 @@ uptime_kuma_status_page:
       monitorList:
         - name: aswitch
         - name: pi-cam
+        - name: Vinyl Live
 
 # Home Assistant notification — set to your HA LAN URL and 1Password ref.
 uptime_kuma_ha_url: http://192.168.1.x:8123
@@ -65,3 +66,7 @@ uptime_kuma_monitors:
     hostname: 192.168.2.170
   - name: pi-cam
     url: http://192.168.2.171:5005/gui/index.html
+  - name: Vinyl Live
+    # Checks the public listener's health endpoint, which proxies to the
+    # controller and fails if the audio service is unavailable.
+    url: http://192.168.2.151:8098/healthz

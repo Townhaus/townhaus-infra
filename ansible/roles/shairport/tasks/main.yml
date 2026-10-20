@@ -250,3 +250,15 @@
   failed_when: shairport_service_active.stdout != "active"
   become: true
   when: not (shairport_airplay2_enabled | bool)
+
+- name: Install optional MPRIS-to-MQTT bridge
+  ansible.builtin.import_tasks: mpris_mqtt_bridge.yml
+  when:
+    - shairport_airplay2_enabled | bool
+    - shairport_mpris_mqtt_bridge_enabled | bool
+
+- name: Disable optional MPRIS-to-MQTT bridge when not selected
+  ansible.builtin.import_tasks: mpris_mqtt_bridge_disabled.yml
+  when: >-
+    not (shairport_airplay2_enabled | bool)
+    or not (shairport_mpris_mqtt_bridge_enabled | bool)

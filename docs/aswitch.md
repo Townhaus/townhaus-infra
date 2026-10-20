@@ -28,14 +28,17 @@ aswitch deployment.
 | Change | Command | What restarts |
 |---|---|---|
 | All aswitch services | `just deploy-aswitch` | Managed services as needed |
-| AirPlay routing or level | `just deploy-aswitch-airplay` | `shairport-sync` |
+| AirPlay routing, level, or metadata bridge | `just deploy-aswitch-airplay` | AirPlay 2 Shairport and its MPRIS-to-MQTT bridge |
 | Vinyl ingest/client settings | `just deploy-aswitch-ingest` | `audio_activity` |
 | Recording archive workflow | `just deploy-aswitch-recordings` | `audio_activity` when code changes; archive timer |
 | Wi-Fi power saving | `just deploy-aswitch-wifi` | None; applies without reconnecting |
 
 The Shairport output is pinned to 44.1 kHz, `S16_LE`, and a -12 dB maximum
 software level. Interpolation uses Shairport's `auto` mode on aswitch. The
-preamp remains the master volume.
+preamp remains the master volume. The optional MPRIS-to-MQTT bridge is enabled
+on aswitch and publishes track metadata and binary cover art under the existing
+`aswitch/shairport/{title,artist,album,genre,cover}` topics. Shairport's own MQTT
+client continues to publish playback events and status.
 
 The `pi_wifi` role disables power saving on the existing
 `netplan-wlan0-GREATWHITE` NetworkManager connection and on the active `wlan0`
@@ -112,8 +115,8 @@ PYTHONPATH=services/aswitch python3 -m unittest discover -s services/aswitch/tes
 
 ```bash
 # Confirm the active Shairport output and playback errors.
-ssh aswitch.local 'systemctl status shairport-sync --no-pager'
-ssh aswitch.local 'journalctl -u shairport-sync -n 100 --no-pager'
+ssh aswitch.local 'systemctl is-active shairport-sync-airplay2 shairport-mpris-mqtt'
+ssh aswitch.local 'journalctl -u shairport-sync-airplay2 -u shairport-mpris-mqtt -n 100 --no-pager'
 
 # Inspect vinyl activity and GrooveNET upload attempts.
 ssh aswitch.local 'journalctl -u audio_activity -n 100 --no-pager'

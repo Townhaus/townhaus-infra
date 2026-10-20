@@ -10,6 +10,15 @@ Apply only monitor and status-page changes with:
 just configure-uptime-kuma
 ```
 
+The Vinyl Live Compose stack has a systemd boot unit so its containers are
+reconciled after Docker starts, including when a container was removed. Apply
+only that boot-unit change with:
+
+```bash
+ansible-playbook ansible/deploy-vinyl-live.yml --limit townhaus_caddy \
+  --tags vinyl_live_boot --ask-become-pass
+```
+
 The aswitch monitor is an ICMP Ping check for `192.168.2.170`. It should not
 monitor the retired CamillaGUI port.
 
