@@ -10,6 +10,7 @@ on:
       - "README.md"
       - "docs/**"
       - "scripts/check-markdown-links.py"
+      - "scripts/test-groovenet-deploy.py"
       - ".github/fixtures/**"
       - ".pre-commit-config.yaml"
       - "Justfile"
@@ -24,6 +25,7 @@ on:
       - "README.md"
       - "docs/**"
       - "scripts/check-markdown-links.py"
+      - "scripts/test-groovenet-deploy.py"
       - ".github/fixtures/**"
       - ".pre-commit-config.yaml"
       - "Justfile"
@@ -51,6 +53,9 @@ jobs:
 
       - name: Run ansible-lint
         run: ansible-lint ansible/
+
+      - name: Test GrooveNET deployment preservation
+        run: python scripts/test-groovenet-deploy.py
 
       - name: Run Ansible syntax checks
         run: |
