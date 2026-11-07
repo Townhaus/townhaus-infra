@@ -1,0 +1,7 @@
+---
+- name: Configure only the native Beszel agent on OPNsense
+  hosts: opnsense
+  gather_facts: true
+  become: true
+  roles:
+    - role: opnsense_beszel_agent

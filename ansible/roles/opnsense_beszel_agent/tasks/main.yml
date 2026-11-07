@@ -1,0 +1,16 @@
+---
+- name: Validate appliance platform before any mutation
+  ansible.builtin.import_tasks: platform.yml
+
+- name: Inspect existing native service
+  ansible.builtin.stat:
+    path: /usr/local/etc/rc.d/beszel-agent
+  register: opnsense_beszel_agent_service
+
+- name: Install and enable the agent
+  ansible.builtin.include_tasks: enabled.yml
+  when: opnsense_beszel_agent_enabled | bool
+
+- name: Disable the agent without downloading or resolving secrets
+  ansible.builtin.include_tasks: disabled.yml
+  when: not (opnsense_beszel_agent_enabled | bool)

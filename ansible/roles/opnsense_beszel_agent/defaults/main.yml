@@ -1,0 +1,13 @@
+---
+opnsense_beszel_agent_enabled: true
+# Match the existing root Compose hub, independently of Linux beszel_version.
+opnsense_beszel_agent_version: "0.21.0"
+opnsense_beszel_agent_release_sha256:
+  "0.21.0": 2c3a06ef4955e9da5b18439eabac0b2101fe096fed8adc94473ccec80a512e29
+opnsense_beszel_agent_hub_url: https://beszel.home.arpa
+opnsense_beszel_agent_hub_key: ""
+opnsense_beszel_agent_token_ref: ""
+opnsense_beszel_agent_ca_file: ""
+opnsense_beszel_agent_nics: re0,ue0
+opnsense_beszel_agent_filesystem: /
+opnsense_beszel_agent_extra_filesystems: ""

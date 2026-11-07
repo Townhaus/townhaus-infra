@@ -1,0 +1,7 @@
+#!/bin/sh
+# Managed by Ansible. Respect the enable flag even if this hook is retained.
+if /usr/sbin/service beszel-agent enabled >/dev/null 2>&1; then
+    if ! /usr/sbin/service beszel-agent status >/dev/null 2>&1; then
+        /usr/sbin/service beszel-agent start
+    fi
+fi

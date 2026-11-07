@@ -1,5 +1,5 @@
 [townhaus_caddy]
-beelink ansible_host=beelink ansible_user=saegey
+beelink ansible_host=192.168.2.151 ansible_user=saegey
 
 [aswitch]
 aswitch_host ansible_host=aswitch.local ansible_user=saegey

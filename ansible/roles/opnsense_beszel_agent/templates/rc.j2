@@ -1,0 +1,42 @@
+#!/bin/sh
+# Managed by Ansible.
+# PROVIDE: beszel_agent
+# REQUIRE: DAEMON NETWORKING
+# BEFORE: LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+name="beszel_agent"
+rcvar="beszel_agent_enable"
+load_rc_config "$name"
+: ${beszel_agent_enable:="NO"}
+# This role owns the launch contract. In particular, an upstream installer may
+# have left beszel_agent_user=daemon in rc.conf; rc.subr must not drop privilege
+# before the supervisor opens its root-owned PID/log files. Only daemon -u below
+# drops the child privilege. Ignore old installer flags/program/env-file values.
+unset beszel_agent_user beszel_agent_group beszel_agent_groups
+unset beszel_agent_flags beszel_agent_program beszel_agent_env_file
+
+# Track the supervisor, so stop terminates supervision AND its child rather than
+# killing only the child and letting daemon -r immediately respawn it.
+pidfile="/var/run/beszel_agent.pid"
+command="/usr/sbin/daemon"
+procname="/usr/sbin/daemon"
+command_args="-f -c -H -r -R 5 -P ${pidfile} -p /var/run/beszel_agent.child.pid -o /var/log/beszel_agent.log -u daemon /usr/local/sbin/beszel-agent"
+start_precmd="beszel_agent_prestart"
+
+beszel_agent_prestart()
+{
+    [ -r /usr/local/etc/beszel-agent/env ] || return 1
+    [ -x /usr/local/sbin/beszel-agent ] || return 1
+    /usr/bin/install -d -o daemon -g daemon -m 0700 /var/run/beszel-agent || return 1
+    # daemon opens its output file before dropping privilege. Never chown logs,
+    # executables, or rc scripts to the shared daemon account.
+    (umask 077; touch /var/log/beszel_agent.log) || return 1
+    chmod 0600 /var/log/beszel_agent.log || return 1
+    set -a
+    . /usr/local/etc/beszel-agent/env
+    set +a
+}
+
+run_rc_command "$1"

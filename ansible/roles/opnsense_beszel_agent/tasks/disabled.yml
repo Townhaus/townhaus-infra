@@ -1,0 +1,27 @@
+---
+- name: Disable installed service in its dedicated rc configuration
+  ansible.builtin.template:
+    src: rc.conf.j2
+    dest: /etc/rc.conf.d/beszel_agent
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: /bin/sh -n %s
+  when: opnsense_beszel_agent_service.stat.exists
+
+- name: Stop installed native agent
+  ansible.builtin.service:
+    name: beszel-agent
+    use: ansible.builtin.service
+    state: stopped
+  when:
+    - opnsense_beszel_agent_service.stat.exists
+    - not ansible_check_mode
+
+- name: Remove boot hook and stored token on disable
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/etc/rc.syshook.d/start/99-beszel-agent
+    - /usr/local/etc/beszel-agent/env

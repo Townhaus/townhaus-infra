@@ -1,0 +1,9 @@
+---
+- name: Restart OPNsense Beszel agent
+  ansible.builtin.service:
+    name: beszel-agent
+    use: ansible.builtin.service
+    state: restarted
+  when:
+    - opnsense_beszel_agent_enabled | bool
+    - not ansible_check_mode

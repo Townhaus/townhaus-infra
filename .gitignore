@@ -9,6 +9,8 @@ ansible/group_vars/townhaus_caddy/uptime_kuma.yml
 ansible/group_vars/aswitch_secrets.yml
 ansible/group_vars/pi_cam_secrets.yml
 ansible/inventory.ini
+ansible/inventory.opnsense.ini
+ansible/host_vars/opnsense_firewall.yml
 certs/
 data/
 services/aswitch/env/*.env
