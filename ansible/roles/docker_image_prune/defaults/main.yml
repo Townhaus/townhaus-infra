@@ -1,0 +1,8 @@
+---
+docker_image_prune_schedule:
+  minute: "30"
+  hour: "4"
+  weekday: "0"
+docker_image_prune_minimum_age: 168h
+docker_image_prune_job: >-
+  /usr/bin/docker image prune -a -f --filter until={{ docker_image_prune_minimum_age }} >/dev/null 2>&1

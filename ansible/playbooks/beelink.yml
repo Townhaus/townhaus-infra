@@ -34,6 +34,7 @@
     - role: beszel_hub
     - role: adguard_dns
     - role: beszel_agent
+    - role: docker_image_prune
     - role: package_update_report
     - role: frigate
     - role: uptime_kuma
