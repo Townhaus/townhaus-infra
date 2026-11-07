@@ -1,0 +1,7 @@
+---
+- name: Upgrade Beszel agents on the existing Linux hosts
+  hosts: townhaus_caddy:aswitch:pi_cam
+  gather_facts: true
+
+  roles:
+    - role: beszel_agent

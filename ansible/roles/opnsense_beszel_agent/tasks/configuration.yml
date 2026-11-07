@@ -1,0 +1,59 @@
+---
+- name: Ensure private root-owned log without changing timestamps on repeat runs
+  ansible.builtin.file:
+    path: /var/log/beszel_agent.log
+    state: touch
+    access_time: preserve
+    modification_time: preserve
+    owner: root
+    group: wheel
+    mode: "0600"
+
+- name: Write private agent environment without revealing token or diff
+  ansible.builtin.template:
+    src: env.j2
+    dest: /usr/local/etc/beszel-agent/env
+    owner: root
+    group: wheel
+    mode: "0600"
+    validate: /bin/sh -n %s
+  no_log: true
+  diff: false
+  notify: Restart OPNsense Beszel agent
+
+- name: Manage FreeBSD rc service
+  ansible.builtin.template:
+    src: rc.j2
+    dest: /usr/local/etc/rc.d/beszel-agent
+    owner: root
+    group: wheel
+    mode: "0755"
+    validate: /bin/sh -n %s
+  notify: Restart OPNsense Beszel agent
+
+- name: Manage dedicated rc enable flag
+  ansible.builtin.template:
+    src: rc.conf.j2
+    dest: /etc/rc.conf.d/beszel_agent
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: /bin/sh -n %s
+  notify: Restart OPNsense Beszel agent
+
+- name: Manage OPNsense start hook
+  ansible.builtin.template:
+    src: syshook.j2
+    dest: /usr/local/etc/rc.syshook.d/start/99-beszel-agent
+    owner: root
+    group: wheel
+    mode: "0755"
+    validate: /bin/sh -n %s
+
+- name: Bound agent log growth using native newsyslog
+  ansible.builtin.template:
+    src: newsyslog.conf.j2
+    dest: /usr/local/etc/newsyslog.conf.d/beszel-agent.conf
+    owner: root
+    group: wheel
+    mode: "0644"

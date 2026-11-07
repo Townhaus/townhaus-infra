@@ -1,0 +1,154 @@
+---
+- name: Validate pinned release and non-secret configuration
+  ansible.builtin.assert:
+    that:
+      - opnsense_beszel_agent_version in opnsense_beszel_agent_release_sha256
+      - opnsense_beszel_agent_release_sha256[opnsense_beszel_agent_version] is match('^[a-f0-9]{64}$')
+      - opnsense_beszel_agent_hub_url is match('^https://[a-zA-Z0-9.-]+(:[0-9]+)?/?$')
+      - opnsense_beszel_agent_hub_key is match('^ssh-ed25519 [A-Za-z0-9+/]{68}([ ].*)?$')
+      - "'\n' not in opnsense_beszel_agent_hub_key"
+      - opnsense_beszel_agent_token_ref is match('^op://[^\r\n]+$')
+      - opnsense_beszel_agent_ca_file | length > 0
+    fail_msg: >-
+      Supply a reviewed version/checksum, HTTPS hub URL, hub public ed25519 key,
+      dedicated 1Password token reference, and controller-local public CA file.
+      See docs/opnsense-beszel.md.
+
+- name: Verify the existing daemon account
+  ansible.builtin.getent:
+    database: passwd
+    key: daemon
+
+- name: Verify the existing daemon group
+  ansible.builtin.getent:
+    database: group
+    key: daemon
+
+- name: Verify controller-local public CA file
+  ansible.builtin.stat:
+    path: "{{ opnsense_beszel_agent_ca_file }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  register: opnsense_beszel_agent_ca
+
+- name: Require a public PEM CA file before installation
+  ansible.builtin.assert:
+    that:
+      - opnsense_beszel_agent_ca.stat.isreg | default(false)
+    fail_msg: Obtain and verify Beelink Caddy's public CA certificate on the controller first.
+
+- name: Validate public CA certificate syntax on controller
+  ansible.builtin.command:
+    argv: [openssl, x509, -in, "{{ opnsense_beszel_agent_ca_file }}", -noout]
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  changed_when: false
+  check_mode: false
+
+- name: Read dedicated agent token from 1Password on the controller
+  ansible.builtin.command:
+    argv: [op, read, "{{ opnsense_beszel_agent_token_ref }}"]
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  register: opnsense_beszel_agent_token_result
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: Require a nonempty single-line token
+  ansible.builtin.assert:
+    that:
+      - opnsense_beszel_agent_token_result.stdout | length > 0
+      - "'\n' not in opnsense_beszel_agent_token_result.stdout"
+      - "'\r' not in opnsense_beszel_agent_token_result.stdout"
+  no_log: true
+
+- name: Create root-owned native agent directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: wheel
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /usr/local/etc/beszel-agent, mode: "0755" }
+    - { path: /usr/local/etc/rc.d, mode: "0755" }
+    - { path: /usr/local/etc/newsyslog.conf.d, mode: "0755" }
+    - { path: /etc/rc.conf.d, mode: "0755" }
+    - { path: /usr/local/etc/rc.syshook.d/start, mode: "0755" }
+    - { path: "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}", mode: "0700" }
+
+- name: Create private persistent agent data directory
+  ansible.builtin.file:
+    path: /var/db/beszel-agent
+    state: directory
+    owner: daemon
+    group: daemon
+    mode: "0700"
+
+- name: Download checksum-verified pinned FreeBSD archive
+  ansible.builtin.get_url:
+    url: "https://github.com/henrygd/beszel/releases/download/v{{ opnsense_beszel_agent_version }}/beszel-agent_freebsd_amd64.tar.gz"
+    dest: "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}/agent.tar.gz"
+    checksum: "sha256:{{ opnsense_beszel_agent_release_sha256[opnsense_beszel_agent_version] }}"
+    owner: root
+    group: wheel
+    mode: "0600"
+  register: opnsense_beszel_agent_archive
+
+- name: Inspect staged binary
+  ansible.builtin.stat:
+    path: "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}/beszel-agent"
+  register: opnsense_beszel_agent_staged
+
+# FreeBSD bsdtar is supported; Ansible unarchive expects GNU tar for tar archives.
+- name: Extract verified binary with native tar
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/tar
+      - -xzf
+      - "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}/agent.tar.gz"
+      - -C
+      - "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}"
+      - beszel-agent
+  when: opnsense_beszel_agent_archive.changed or not opnsense_beszel_agent_staged.stat.exists
+  changed_when: true
+
+- name: Install pinned binary atomically
+  ansible.builtin.copy:
+    src: "/var/cache/beszel-agent/{{ opnsense_beszel_agent_version }}/beszel-agent"
+    remote_src: true
+    dest: /usr/local/sbin/beszel-agent
+    owner: root
+    group: wheel
+    mode: "0755"
+  when: not ansible_check_mode
+  notify: Restart OPNsense Beszel agent
+
+- name: Install public hub CA for agent-only trust
+  ansible.builtin.copy:
+    src: "{{ opnsense_beszel_agent_ca_file }}"
+    dest: /usr/local/etc/beszel-agent/hub-ca.crt
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: Restart OPNsense Beszel agent
+
+- name: Render native agent configuration and lifecycle scripts
+  ansible.builtin.import_tasks: configuration.yml
+
+- name: Apply pending agent restart before ensuring it is started
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure native agent is running
+  ansible.builtin.service:
+    name: beszel-agent
+    use: ansible.builtin.service
+    state: started
+  when: not ansible_check_mode

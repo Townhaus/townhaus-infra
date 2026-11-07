@@ -1,38 +1,106 @@
 ---
-- name: Set architecture-specific asset name
+- name: Require a supported Linux agent platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Linux'
+      - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+    fail_msg: The beszel_agent role supports Linux amd64/arm64 only; use opnsense_beszel_agent for OPNsense.
+
+- name: Set architecture-specific release asset
   ansible.builtin.set_fact:
-    beszel_agent_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
+    beszel_agent_asset: "{{ 'linux_amd64_glibc' if ansible_facts['architecture'] == 'x86_64' else 'linux_arm64' }}"
+    beszel_agent_checksum_key: "{{ 'amd64_glibc' if ansible_facts['architecture'] == 'x86_64' else 'arm64' }}"
 
-- name: Check if beszel-agent is installed
+- name: Validate pinned Beszel release checksum
+  ansible.builtin.assert:
+    that:
+      - beszel_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
+      - beszel_agent_release_sha256[beszel_agent_checksum_key] is defined
+      - beszel_agent_release_sha256[beszel_agent_checksum_key] is match('^[a-f0-9]{64}$')
+    fail_msg: No verified Beszel release checksum is configured for this version and architecture.
+
+- name: Create root-owned versioned Beszel staging directory
+  ansible.builtin.file:
+    path: "/var/cache/beszel-agent/{{ beszel_version }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Download checksum-verified Beszel agent archive
+  ansible.builtin.get_url:
+    url: "https://github.com/henrygd/beszel/releases/download/v{{ beszel_version }}/beszel-agent_{{ beszel_agent_asset }}.tar.gz"
+    dest: "/var/cache/beszel-agent/{{ beszel_version }}/agent.tar.gz"
+    checksum: "sha256:{{ beszel_agent_release_sha256[beszel_agent_checksum_key] }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Inspect staged Beszel agent binary
   ansible.builtin.stat:
-    path: /usr/local/bin/beszel-agent
-  register: beszel_agent_installed
+    path: "/var/cache/beszel-agent/{{ beszel_version }}/beszel-agent"
+  register: beszel_agent_staged
+  become: true
 
-- name: Download and install beszel-agent
-  when: not beszel_agent_installed.stat.exists
-  block:
-    - name: Download beszel-agent archive
-      # Archive name pattern: beszel_agent_linux_amd64.tar.gz / beszel_agent_linux_arm64.tar.gz
-      # Verify the filename at https://github.com/henrygd/beszel/releases before upgrading.
-      ansible.builtin.get_url:
-        url: "https://github.com/henrygd/beszel/releases/download/v{{ beszel_version }}/beszel-agent_linux_{{ beszel_agent_arch }}.tar.gz"
-        dest: /tmp/beszel_agent.tar.gz
-        mode: "0644"
+- name: Extract verified Beszel agent binary
+  ansible.builtin.unarchive:
+    src: "/var/cache/beszel-agent/{{ beszel_version }}/agent.tar.gz"
+    dest: "/var/cache/beszel-agent/{{ beszel_version }}"
+    remote_src: true
+    include:
+      - beszel-agent
+    creates: "/var/cache/beszel-agent/{{ beszel_version }}/beszel-agent"
+  when: not beszel_agent_staged.stat.exists
+  become: true
 
-    - name: Extract beszel-agent binary
-      ansible.builtin.unarchive:
-        src: /tmp/beszel_agent.tar.gz
-        dest: /usr/local/bin/
-        remote_src: true
-        include:
-          - beszel-agent
-      become: true
+- name: Install or update Beszel agent binary
+  ansible.builtin.copy:
+    src: "/var/cache/beszel-agent/{{ beszel_version }}/beszel-agent"
+    remote_src: true
+    dest: /usr/local/bin/beszel-agent
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  notify: Reload And Restart Beszel-Agent
+  register: beszel_agent_binary_copy
 
-    - name: Make beszel-agent executable
-      ansible.builtin.file:
-        path: /usr/local/bin/beszel-agent
-        mode: "0755"
-      become: true
+- name: Check recorded running Beszel agent version
+  ansible.builtin.stat:
+    path: /var/lib/beszel-agent-version
+  register: beszel_agent_version_marker
+  become: true
+
+- name: Read recorded running Beszel agent version
+  ansible.builtin.slurp:
+    src: /var/lib/beszel-agent-version
+  register: beszel_agent_version_marker_contents
+  when: beszel_agent_version_marker.stat.exists
+  become: true
+
+- name: Request restart for binary changes or interrupted prior runs
+  ansible.builtin.command:
+    argv: [/usr/bin/true]
+  changed_when: true
+  when: >-
+    beszel_agent_binary_copy.changed or
+    not beszel_agent_version_marker.stat.exists or
+    (beszel_agent_version_marker_contents.content | default('') | b64decode | trim) != beszel_version
+  notify: Reload And Restart Beszel-Agent
+
+- name: Apply pending binary restart before remaining configuration tasks
+  ansible.builtin.meta: flush_handlers
+
+- name: Record running Beszel agent version after successful restart
+  ansible.builtin.copy:
+    content: "{{ beszel_version }}\n"
+    dest: /var/lib/beszel-agent-version
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
 
 - name: Derive Beszel Hub public key from private key in volume
   ansible.builtin.command:

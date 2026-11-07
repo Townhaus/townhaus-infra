@@ -1,0 +1,8 @@
+# Standalone inventory: do not add this host to townhaus_caddy or the Linux plays.
+# Copy to inventory.opnsense.ini (ignored). Replace the SSH user after authorized bootstrap.
+[opnsense]
+opnsense_firewall ansible_host=192.168.2.1 ansible_user=FIREWALL_SSH_USER
+
+# Transport defaults live in group_vars/opnsense.yml so they override Linux
+# group_vars/all before gathering facts. Verify /usr/local/bin/python3 exists;
+# override ansible_python_interpreter on the host line if needed.

@@ -5,6 +5,9 @@ Homelab monorepo managing a Caddy reverse proxy stack, Frigate NVR, Raspberry Pi
 For a terminal workspace with repo, Caddy, stack operations, and audio tabs,
 see [Townhaus Infra in Herdr](docs/herdr.md).
 
+Native firewall monitoring is an opt-in, separate playbook: see
+[OPNsense Beszel agent](docs/opnsense-beszel.md) for prerequisites and deployment.
+
 ## Hosts
 
 | Host | Role |

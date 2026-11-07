@@ -35,16 +35,19 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_recordings.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_wifi.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/pi_cam.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beszel_agents.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/tailscale.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/upgrade_beelink_trixie.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/motd.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/uptime_kuma.yml
+    ansible-playbook --syntax-check -i ansible/inventory.opnsense.ini.example ansible/playbooks/opnsense_beszel.yml
 
 # Run repository validation checks.
 check:
     just syntax-check
     just lint
     just test-groovenet-deploy
+    just test-opnsense-beszel
     git diff --check
 
 # Lint Ansible content. Use `pre-commit install` once to run this automatically before commits.
@@ -62,6 +65,15 @@ deploy-stack:
 # Test GrooveNET player preservation without contacting hosts or Docker.
 test-groovenet-deploy:
     python3 scripts/test-groovenet-deploy.py
+
+# Exercise native OPNsense guards and lifecycle artifacts entirely offline.
+test-opnsense-beszel:
+    python3 scripts/test-opnsense-beszel.py
+
+# Explicit future deployment only; never included in `deploy` or Linux plays.
+[positional-arguments]
+configure-opnsense-beszel *args:
+    ansible-playbook -i ansible/inventory.opnsense.ini ansible/playbooks/opnsense_beszel.yml "$@"
 
 # Deploy the GrooveNET stack to beelink at the pinned tag, or override: `just deploy-groovenet v0.1.5`.
 deploy-groovenet version="":
@@ -93,6 +105,22 @@ logs-now-playing:
 # Apply beelink host roles, including backup timers and service configuration.
 configure-beelink:
     ansible-playbook ansible/playbooks/beelink.yml --ask-become-pass
+
+# Upgrade only existing Linux Beszel agents; OPNsense is intentionally excluded.
+[positional-arguments]
+update-beszel-agents *args:
+    #!/usr/bin/env zsh
+    set -eu
+    inventory=ansible/inventory.ini
+    if [[ ! -s "$inventory" ]]; then
+        inventory=ansible/inventory.ini.example
+        print "Using example inventory ($inventory); create ansible/inventory.ini to override it."
+    fi
+    if [[ ! -s "$inventory" ]]; then
+        print -u2 "No usable Ansible inventory found."
+        exit 2
+    fi
+    ansible-playbook -i "$inventory" ansible/playbooks/beszel_agents.yml "$@"
 
 # Upgrade beelink from Debian 12 Bookworm to Debian 13 Trixie (long-running; asks for confirmation).
 upgrade-beelink-trixie:

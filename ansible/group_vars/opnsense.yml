@@ -1,0 +1,8 @@
+---
+# Group-specific vars override group_vars/all/main.yml before fact gathering.
+# INI [opnsense:vars] alone has lower precedence than YAML group_vars/all.
+ansible_shell_type: sh
+ansible_shell_executable: /bin/sh
+ansible_python_interpreter: /usr/local/bin/python3
+# Avoid shell-specific $USER expansion in the shared ansible.cfg default.
+ansible_remote_tmp: "/tmp/.ansible-{{ ansible_user }}/tmp"

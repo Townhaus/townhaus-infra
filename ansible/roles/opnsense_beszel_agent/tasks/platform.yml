@@ -1,0 +1,25 @@
+---
+- name: Require supported FreeBSD amd64 platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'FreeBSD'
+      - ansible_facts['architecture'] in ['amd64', 'x86_64']
+      - ansible_facts['kernel'].split('.')[0] | int >= 14
+      - ansible_shell_executable == '/bin/sh'
+    fail_msg: This role requires OPNsense on FreeBSD 14+ amd64 and ansible_shell_executable=/bin/sh; no Linux/systemd or other architectures are supported.
+
+- name: Inspect upstream OPNsense identification paths
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: true
+  loop:
+    - /usr/local/sbin/opnsense-version
+    - /usr/local/etc/opnsense-version
+    - /etc/opnsense-release
+  register: opnsense_beszel_agent_markers
+
+- name: Require an OPNsense appliance
+  ansible.builtin.assert:
+    that:
+      - opnsense_beszel_agent_markers.results | selectattr('stat.isreg', 'defined') | selectattr('stat.isreg') | list | length > 0
+    fail_msg: No OPNsense identification file found; refusing to manage a generic FreeBSD host or pfSense.

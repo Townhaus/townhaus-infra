@@ -19,7 +19,13 @@ camillagui_version: "4.0.1"
 camillagui_install_dir: "{{ remote_home }}/camillagui"
 camillagui_port: 5005
 
-beszel_version: "0.18.7"
+beszel_version: "0.21.0"
+# SHA256 values from the official v0.21.0 Beszel release checksums manifest.
+beszel_agent_release_sha256:
+  amd64_glibc: "43265e3d241cd496c756936150c31de24eb307193ce347aca65ad41cfab7b1be"
+  arm64: "82804205a370a790679e836c3c3d658bc804205517e1c3f676dba9fad064ade5"
 beszel_agent_port: 45876
-beszel_hub_host: beelink.local
+# Inventory alias for the existing Beelink hub. Keep delegation aligned with
+# the alias so its ansible_host, user, and SSH settings are reused.
+beszel_hub_host: beelink
 beszel_agent_user: "{{ ansible_user }}"

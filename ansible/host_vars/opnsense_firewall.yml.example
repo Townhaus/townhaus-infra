@@ -1,0 +1,10 @@
+---
+# Copy to opnsense_firewall.yml (ignored); these are references/public material only.
+opnsense_beszel_agent_enabled: true
+opnsense_beszel_agent_hub_url: https://beszel.home.arpa
+# Copy ONLY the public key displayed by Add System in the EXISTING Beelink hub.
+opnsense_beszel_agent_hub_key: "REPLACE_WITH_HUB_PUBLIC_SSH_ED25519_KEY"
+# Dedicated agent token reference; the token value remains in 1Password.
+opnsense_beszel_agent_token_ref: op://Homelab/OPNSense Townhaus/beszel_token
+# Controller-local public Caddy CA PEM, obtained from Beelink and verified separately.
+opnsense_beszel_agent_ca_file: "{{ inventory_dir }}/../certs/beelink-caddy-root.crt"
