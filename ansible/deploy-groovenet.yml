@@ -5,7 +5,7 @@
   vars:
     # Common `docker compose` prefix. IMAGE_TAG is supplied via `environment:`
     # on each command so the pinned tag drives image selection.
-    groovenet_compose_base:
+    groovenet_compose_default:
       - docker
       - compose
       - --env-file
@@ -27,6 +27,9 @@
         fail_msg: >-
           Set groovenet_image_tag to a published release tag, e.g. v0.1.4
           (in group_vars or with -e groovenet_image_tag=v0.1.5).
+
+    - name: Preserve the host-managed server-player deployment
+      ansible.builtin.include_tasks: tasks/groovenet-player-config.yml
 
     - name: Check 1Password CLI availability on the control machine
       ansible.builtin.command:
@@ -117,6 +120,16 @@
         mode: "0600"
       no_log: true
 
+    - name: Validate effective Compose configuration before restarting services
+      ansible.builtin.command:
+        argv: "{{ groovenet_compose_base + ['config', '--quiet'] }}"
+      args:
+        chdir: "{{ groovenet_app_dir }}"
+      environment:
+        IMAGE_TAG: "{{ groovenet_image_tag }}"
+      changed_when: false
+      no_log: true
+
     - name: Ensure the shared groovenet network exists
       ansible.builtin.command:
         argv: [docker, network, create, "{{ groovenet_project_name }}_default"]
@@ -171,12 +184,30 @@
 
     - name: Start the full stack
       ansible.builtin.command:
-        argv: "{{ groovenet_compose_base + ['up', '-d', '--remove-orphans'] }}"
+        argv: "{{ groovenet_compose_base + ['up', '-d', '--no-build', '--remove-orphans'] }}"
       args:
         chdir: "{{ groovenet_app_dir }}"
       environment:
         IMAGE_TAG: "{{ groovenet_image_tag }}"
       changed_when: true
+
+    - name: Verify authenticated server-player discovery without sending playback commands
+      ansible.builtin.command:
+        argv: >-
+          {{ groovenet_compose_base + ['exec', '-T', 'app', 'node', '-e',
+             'fetch("http://127.0.0.1:3000/api/players", ' +
+             '{headers: {Authorization: "Bearer " + process.env.PLAYER_API_KEY}})' +
+             '.then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'] }}
+      args:
+        chdir: "{{ groovenet_app_dir }}"
+      environment:
+        IMAGE_TAG: "{{ groovenet_image_tag }}"
+      register: groovenet_players_ready
+      until: groovenet_players_ready.rc == 0
+      retries: 20
+      delay: 3
+      changed_when: false
+      when: groovenet_players_enabled | bool
 
     - name: Show compose status
       ansible.builtin.command:
