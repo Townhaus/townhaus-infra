@@ -1,0 +1,53 @@
+---
+# Player secrets, engine source/assets and images are provisioned separately.
+# Never replace their host-managed settings with the collection credential template.
+- name: Check for host-managed player credentials
+  ansible.builtin.stat:
+    path: "{{ groovenet_app_dir }}/.env.players"
+    get_checksum: false
+    get_mime: false
+  register: groovenet_player_env
+
+- name: Check for the installed player Compose overlay
+  ansible.builtin.stat:
+    path: "{{ groovenet_app_dir }}/docker-compose.players.yml"
+    get_checksum: false
+    get_mime: false
+  register: groovenet_player_overlay
+
+- name: Find existing services before considering orphan removal
+  ansible.builtin.command:
+    argv:
+      - docker
+      - ps
+      - --all
+      - --filter
+      - "label=com.docker.compose.project={{ groovenet_project_name }}"
+      - --format
+      - >-
+        {{ '{{.Label "com.docker.compose.service"}}' }}
+  register: groovenet_existing_services
+  changed_when: false
+
+- name: Refuse an incomplete player deployment instead of deleting its services
+  ansible.builtin.assert:
+    that:
+      - groovenet_player_env.stat.exists == groovenet_player_overlay.stat.exists
+      - not groovenet_player_env.stat.exists or groovenet_player_env.stat.isreg
+      - not groovenet_player_overlay.stat.exists or groovenet_player_overlay.stat.isreg
+      - >-
+        groovenet_player_env.stat.exists or
+        (groovenet_existing_services.stdout_lines | select('match', '^player-') | list | length == 0)
+    fail_msg: >-
+      Server-player deployment is incomplete. Restore both .env.players and
+      docker-compose.players.yml in {{ groovenet_app_dir }} before deploying.
+      Existing player services must not be removed as orphans. Player settings
+      and images are host-managed; this playbook does not overwrite them.
+
+- name: Include player settings and services in every Compose operation
+  ansible.builtin.set_fact:
+    groovenet_players_enabled: "{{ groovenet_player_env.stat.exists }}"
+    groovenet_compose_base: >-
+      {{ groovenet_compose_default +
+         (['--env-file', '.env.players', '-f', 'docker-compose.players.yml', '--profile', 'players']
+          if groovenet_player_env.stat.exists else []) }}

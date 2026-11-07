@@ -44,6 +44,7 @@ syntax-check:
 check:
     just syntax-check
     just lint
+    just test-groovenet-deploy
     git diff --check
 
 # Lint Ansible content. Use `pre-commit install` once to run this automatically before commits.
@@ -57,6 +58,10 @@ lint-fix:
 # Deploy the Docker Compose stack to beelink.
 deploy-stack:
     ansible-playbook ansible/deploy.yml --ask-become-pass
+
+# Test GrooveNET player preservation without contacting hosts or Docker.
+test-groovenet-deploy:
+    python3 scripts/test-groovenet-deploy.py
 
 # Deploy the GrooveNET stack to beelink at the pinned tag, or override: `just deploy-groovenet v0.1.5`.
 deploy-groovenet version="":
