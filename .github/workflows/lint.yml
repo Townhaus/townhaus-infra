@@ -64,6 +64,7 @@ jobs:
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-vinyl-live.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
+          ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/docker_image_prune.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml

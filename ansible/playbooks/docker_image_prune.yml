@@ -1,0 +1,6 @@
+---
+- name: Configure weekly Docker image cleanup on the Beelink
+  hosts: townhaus_caddy
+  gather_facts: false
+  roles:
+    - role: docker_image_prune

@@ -1,0 +1,10 @@
+---
+- name: Schedule weekly Docker image pruning
+  ansible.builtin.cron:
+    user: "{{ ansible_user }}"
+    name: Weekly Docker image prune
+    job: "{{ docker_image_prune_job }}"
+    minute: "{{ docker_image_prune_schedule.minute }}"
+    hour: "{{ docker_image_prune_schedule.hour }}"
+    weekday: "{{ docker_image_prune_schedule.weekday }}"
+    state: present
