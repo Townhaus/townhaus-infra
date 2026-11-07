@@ -25,7 +25,7 @@ beszel_agent_release_sha256:
   amd64_glibc: "43265e3d241cd496c756936150c31de24eb307193ce347aca65ad41cfab7b1be"
   arm64: "82804205a370a790679e836c3c3d658bc804205517e1c3f676dba9fad064ade5"
 beszel_agent_port: 45876
-# Inventory alias for the existing Beelink hub. Keep delegation aligned with
-# the alias so its ansible_host, user, and SSH settings are reused.
-beszel_hub_host: beelink
+# Inventory alias for the existing Beelink hub. Using the inventory name
+# ensures delegated tasks reuse its ansible_host address and SSH settings.
+beszel_hub_host: beelink.local
 beszel_agent_user: "{{ ansible_user }}"

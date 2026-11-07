@@ -1,0 +1,47 @@
+---
+- name: Migrate Immich PostgreSQL 14 to 16 without upgrading the application
+  hosts: townhaus_caddy
+  become: true
+  gather_facts: false
+  vars:
+    immich_postgres_upgrade_confirm: false
+    immich_postgres_upgrade_image: >-
+      {{ (lookup('ansible.builtin.file', playbook_dir ~ '/../../docker-compose.yml') | from_yaml)['services']['immich-database']['image'] }}
+  tasks:
+    - name: Require an explicitly requested maintenance window
+      ansible.builtin.assert:
+        that:
+          - immich_postgres_upgrade_confirm | bool
+          - not ansible_check_mode
+        fail_msg: >-
+          Run with -e immich_postgres_upgrade_confirm=true during a maintenance
+          window after checking the Immich media backup. Check mode cannot run this migration.
+
+    - name: Inspect the scheduled backup timer
+      ansible.builtin.systemd_service:
+        name: immich-backup.timer
+      register: immich_postgres_backup_timer
+      changed_when: false
+
+    - name: Migrate while scheduled backups are paused
+      block:
+        - name: Pause the backup timer if running
+          ansible.builtin.systemd_service:
+            name: immich-backup.timer
+            state: stopped
+          when: immich_postgres_backup_timer.status.ActiveState | default('inactive') == 'active'
+
+        - name: Dump restore validate and switch the PostgreSQL cluster
+          ansible.builtin.script:
+            cmd: >-
+              ../files/upgrade-immich-postgres.sh
+              {{ townhaus_caddy_app_dir | quote }}
+              {{ immich_postgres_upgrade_image | quote }}
+            executable: /bin/bash
+          changed_when: true
+      always:
+        - name: Resume the previously active backup timer
+          ansible.builtin.systemd_service:
+            name: immich-backup.timer
+            state: started
+          when: immich_postgres_backup_timer.status.ActiveState | default('inactive') == 'active'
