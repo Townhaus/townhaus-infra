@@ -1,0 +1,171 @@
+# Home Assistant package: relative AirPlay volume control for the aswitch preamp.
+input_boolean:
+  aswitch_airplay_volume_bridge_enabled:
+    name: Aswitch AirPlay Volume Bridge Enabled
+    initial: true
+  aswitch_airplay_session_active:
+    name: Aswitch AirPlay Session Active
+    initial: false
+  aswitch_airplay_volume_ready:
+    name: Aswitch AirPlay Volume Baseline Ready
+    initial: false
+
+input_number:
+  aswitch_airplay_last_db:
+    name: Aswitch AirPlay Last Volume
+    min: -144
+    max: 0
+    step: 0.01
+    mode: box
+  aswitch_airplay_db_per_step:
+    name: Aswitch AirPlay dB Per IR Step
+    min: 0.1
+    max: 6
+    step: 0.1
+    initial: 1.9
+    mode: box
+  aswitch_airplay_max_steps:
+    name: Aswitch AirPlay Max Steps Per Change
+    min: 1
+    max: 20
+    step: 1
+    initial: 8
+    mode: box
+
+mqtt:
+  sensor:
+    - name: Aswitch Shairport AirPlay Volume DB
+      unique_id: aswitch_shairport_airplay_volume_db
+      state_topic: aswitch/shairport/volume
+      value_template: "{{ value.split(',')[0] | trim }}"
+      unit_of_measurement: dB
+
+script:
+  aswitch_airplay_capture_baseline:
+    alias: Aswitch AirPlay Capture Baseline
+    mode: restart
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ is_number(states('sensor.aswitch_shairport_airplay_volume_db')) }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.aswitch_airplay_last_db
+            data:
+              value: "{{ states('sensor.aswitch_shairport_airplay_volume_db') | float }}"
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.aswitch_airplay_volume_ready
+        else:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.aswitch_airplay_volume_ready
+
+  aswitch_airplay_apply_volume:
+    alias: Aswitch AirPlay Apply Volume
+    mode: queued
+    max: 10
+    sequence:
+      - condition: state
+        entity_id: input_boolean.aswitch_airplay_session_active
+        state: 'on'
+      - condition: state
+        entity_id: input_boolean.aswitch_airplay_volume_bridge_enabled
+        state: 'on'
+      - condition: template
+        value_template: "{{ is_number(states('sensor.aswitch_shairport_airplay_volume_db')) }}"
+      - if:
+          - condition: state
+            entity_id: input_boolean.aswitch_airplay_volume_ready
+            state: 'off'
+        then:
+          - action: script.aswitch_airplay_capture_baseline
+          - stop: Baseline captured
+      - if:
+          - condition: template
+            value_template: "{{ not is_state('binary_sensor.aswitch_preamp_power', 'on') or is_state('button.preamp_volume_up', 'unavailable') or is_state('button.preamp_volume_down', 'unavailable') }}"
+        then:
+          - action: script.aswitch_airplay_capture_baseline
+          - stop: Preamp or IR transmitter unavailable
+      - variables:
+          current: "{{ states('sensor.aswitch_shairport_airplay_volume_db') | float }}"
+          previous: "{{ states('input_number.aswitch_airplay_last_db') | float }}"
+          delta: "{{ ([current, -28.12] | max) - ([previous, -28.12] | max) }}"
+          steps: "{{ [states('input_number.aswitch_airplay_max_steps') | int(8), ((delta | abs / (states('input_number.aswitch_airplay_db_per_step') | float(1.9)) ) | round(0, 'ceil') | int)] | min }}"
+          direction: "{{ 'vol_up' if delta > 0 else 'vol_down' }}"
+      - if:
+          - condition: template
+            value_template: "{{ delta | abs >= 1 }}"
+        then:
+          - repeat:
+              count: "{{ steps }}"
+              sequence:
+                - condition: state
+                  entity_id: input_boolean.aswitch_airplay_session_active
+                  state: 'on'
+                - condition: state
+                  entity_id: binary_sensor.aswitch_preamp_power
+                  state: 'on'
+                - condition: state
+                  entity_id: input_boolean.aswitch_airplay_volume_bridge_enabled
+                  state: 'on'
+                - action: mqtt.publish
+                  data:
+                    topic: aswitch/ir/send
+                    payload: "{{ direction }}"
+                    retain: false
+                - delay:
+                    milliseconds: 250
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.aswitch_airplay_last_db
+        data:
+          value: "{{ current }}"
+
+automation:
+  - id: aswitch_airplay_volume_start
+    alias: Audio - Aswitch AirPlay volume baseline on session start
+    mode: restart
+    triggers:
+      - trigger: mqtt
+        topic: aswitch/shairport/play_start
+      - trigger: mqtt
+        topic: aswitch/shairport/play_resume
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.aswitch_airplay_session_active
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.aswitch_airplay_volume_ready
+      - delay: '00:00:01'
+      - condition: state
+        entity_id: input_boolean.aswitch_airplay_session_active
+        state: 'on'
+      - action: script.aswitch_airplay_capture_baseline
+
+  - id: aswitch_airplay_volume_end
+    alias: Audio - Aswitch AirPlay volume clear on session end
+    triggers:
+      - trigger: mqtt
+        topic: aswitch/shairport/play_end
+      - trigger: mqtt
+        topic: aswitch/shairport/active_end
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.aswitch_airplay_session_active
+            - input_boolean.aswitch_airplay_volume_ready
+
+  - id: aswitch_airplay_volume_change
+    alias: Audio - Aswitch AirPlay volume from Shairport
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: sensor.aswitch_shairport_airplay_volume_db
+    actions:
+      - delay:
+          milliseconds: 750
+      - action: script.aswitch_airplay_apply_volume

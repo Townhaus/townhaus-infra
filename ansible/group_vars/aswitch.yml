@@ -117,10 +117,8 @@ shairport_mqtt_topic: aswitch/shairport
 shairport_mqtt_publish_parsed: "yes"
 shairport_mqtt_publish_cover: "yes"
 shairport_mpris_mqtt_bridge_enabled: true
-# The SMSL has fixed output. Keep the preamp as the master volume and cap
-# AirPlay at a level that matches the mixer when the source is at full volume.
-shairport_ignore_volume_control: "no"
-shairport_volume_max_db: -12.0
+# Home Assistant converts AirPlay volume changes into preamp IR steps.
+shairport_ignore_volume_control: "yes"
 # Keep Shairport from starting CamillaDSP as a systemd dependency while the
 # latter is disabled. The normal dependency returns when camilladsp_enabled is
 # set to true.

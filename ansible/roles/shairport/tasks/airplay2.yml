@@ -46,7 +46,6 @@
     repo: https://github.com/mikebrady/nqptp.git
     dest: "{{ shairport_airplay2_nqptp_source_dir }}"
     version: "{{ shairport_airplay2_nqptp_version }}"
-    depth: 1
     force: false
   become: true
 
@@ -90,7 +89,6 @@
     repo: https://github.com/mikebrady/shairport-sync.git
     dest: "{{ shairport_airplay2_source_dir }}"
     version: "{{ shairport_airplay2_version }}"
-    depth: 1
     force: false
   become: true
 
