@@ -33,9 +33,15 @@ aswitch deployment.
 | Recording archive workflow | `just deploy-aswitch-recordings` | `audio_activity` when code changes; archive timer |
 | Wi-Fi power saving | `just deploy-aswitch-wifi` | None; applies without reconnecting |
 
-The Shairport output is pinned to 44.1 kHz, `S16_LE`, and a -12 dB maximum
-software level. Interpolation uses Shairport's `auto` mode on aswitch. The
-preamp remains the master volume. The optional MPRIS-to-MQTT bridge is enabled
+The Shairport output is pinned to 44.1 kHz and `S16_LE`, with `auto`
+interpolation. Home Assistant translates AirPlay volume changes into relative
+preamp IR commands; Shairport does not attenuate the signal. The bridge captures
+a baseline at session start and sends up to eight IR steps per change by default.
+It requires the preamp power sensor and IR transmitter to be available. The
+slider does not report the preamp's absolute level, and the floor does not
+toggle mute. Deploy the Home Assistant bridge before the Shairport change and
+start with the preamp volume low: removing the previous -12 dB cap increases
+the signal level. The optional MPRIS-to-MQTT bridge is enabled
 on aswitch and publishes track metadata and binary cover art under the existing
 `aswitch/shairport/{title,artist,album,genre,cover}` topics. Shairport's own MQTT
 client continues to publish playback events and status.
