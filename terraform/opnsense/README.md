@@ -20,6 +20,7 @@ firewall isolation rules are applied and tested.
 | Firewall aliases/rules and NAT | Rules/alias applied; automatic NAT retained |
 | Kea DHCP subnets/reservations | Supported; Kea is not shown in the current running service list |
 | Dnsmasq DHCP ranges | Not available in this provider release |
+| Dnsmasq host reservations | Supported; managed in dhcp_reservations.tf |
 
 Do not switch DHCP servers just to fit Terraform. Keep the working service and
 use the UI or a focused API/Ansible task for gaps. Do not define the same VLAN in
@@ -142,6 +143,58 @@ References:
 - https://github.com/browningluke/terraform-provider-opnsense#current-api-coverage
 - https://registry.terraform.io/providers/browningluke/opnsense/0.26.0/docs
 - https://docs.opnsense.org/development/how-tos/api.html#creating-keys
+
+## IoT DHCP reservations
+
+`dhcp_reservations.tf` is the source of truth for IoT MAC-to-IP mappings.
+Dnsmasq pools/options remain in Ansible; do not manage the same host from both.
+
+| Device | DHCP hostname | MAC | Reserved IP |
+| --- | --- | --- | --- |
+| ESPHome black_light | black-light | 2c:f4:32:c2:ab:8a | 192.168.20.179 |
+| Custom alarm panel (TARS) | alarm-panel | d8:13:2a:73:c6:e8 | 192.168.20.50 |
+| ESP32 presence node | esp32-presence-node | 44:1b:f6:fe:66:ac | 192.168.20.137 |
+| Lounge | lounge | 98:f4:ab:b2:5c:c2 | 192.168.20.51 |
+| PVR lightbox | pvr-lightbox | cc:50:e3:70:59:6e | 192.168.20.52 |
+| Gym | gym | 2c:f4:32:49:db:db | 192.168.20.53 |
+| Fosi ZD3 IR | fosi-zd3-ir | e8:6b:ea:23:7e:14 | 192.168.20.54 |
+| Living room | living-room | dc:4f:22:3d:71:09 | 192.168.20.55 |
+| Oficina | oficina | 44:1b:f6:d4:52:c0 | 192.168.20.56 |
+
+The black light retains its existing address.
+Dnsmasq supports reservations inside its dynamic pool; `.179` stays reserved for
+this MAC rather than requiring a move outside `.100–.199`. The DHCP hostname
+uses a hyphen; this does not rename the ESPHome firmware or HA integration.
+
+Use the reserved IP in this device's Builder configuration:
+
+```yaml
+wifi:
+  # Preserve the existing SSID, password and fallback AP settings.
+  use_address: 192.168.20.179
+```
+
+This is only the new field to merge into the existing Wi-Fi settings, not a full
+replacement of a shared inherited Wi-Fi block. A reservation does not forward
+mDNS across VLANs, and creating a Dnsmasq host does not automatically create an
+AdGuard DNS rewrite. Continue using the IP until ordinary DNS is configured.
+
+### Custom alarm panel migration
+
+The alarm panel has reserved address 192.168.20.50. Its firmware and deployment
+source is the separate `alarm-panel` repository.
+
+`alarm_panel.tf` permits only that panel IP to initiate MQTT to Home Assistant
+192.168.2.91 TCP 1883, and ArduinoOTA callbacks to the current deployment machine
+192.168.2.169 TCP 3232. These rules precede the private-network block; other IoT
+devices do not inherit this access. The current Home-to-IoT policy already allows
+OTA invitations to panel UDP 3232. A random callback port will not work with
+this rule; use the alarm repo's Ansible deployment workflow with fixed port 3232.
+Keep the deployment machine IP stable, or update both the firewall destination
+and Ansible `alarm_panel_deploy_host_ip` if that machine/address changes.
+
+After migration, confirm that the panel joins IoT at 192.168.20.50 and MQTT comes
+online. OTA uploads on IoT target that address.
 
 ## Firewall isolation
 
