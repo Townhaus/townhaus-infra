@@ -1,0 +1,4 @@
+---
+# Copy the Linux x64 URL and SHA-256 from the official Ubiquiti release.
+unifi_os_server_installer_url: ""
+unifi_os_server_installer_sha256: ""

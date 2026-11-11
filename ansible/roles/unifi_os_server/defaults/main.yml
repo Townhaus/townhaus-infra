@@ -1,0 +1,7 @@
+---
+# Pin the official Linux x64 download URL and SHA-256 in a vars file.
+unifi_os_server_installer_url: ""
+unifi_os_server_installer_sha256: ""
+unifi_os_server_installer_path: /var/cache/unifi-os-server-installer
+unifi_os_server_web_port: 11443
+unifi_os_server_startup_timeout: 600

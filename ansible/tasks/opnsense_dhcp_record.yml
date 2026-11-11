@@ -1,0 +1,61 @@
+---
+- name: Find owned records by stable description
+  ansible.builtin.set_fact:
+    matching_records: "{{ record.rows | selectattr('description', 'equalto', record.desired.description) | list }}"
+
+- name: Reject duplicate or conflicting DHCP records
+  ansible.builtin.assert:
+    that:
+      - matching_records | length <= 1
+      - >-
+        record.kind != 'range' or
+        record.rows | selectattr('interface', 'equalto', vlan_interface) |
+        rejectattr('description', 'equalto', record.desired.description) | list | length == 0
+    fail_msg: "An existing or duplicate DHCP pool needs review on {{ vlan_interface }}. No automatic deletion is performed."
+
+- name: Read raw record fields for accurate comparison
+  ansible.builtin.uri:
+    url: "{{ opnsense_url }}/api/dnsmasq/settings/get_{{ record.kind }}/{{ matching_records[0].uuid }}"
+  when: matching_records | length == 1
+  register: existing_dhcp_record
+  check_mode: false
+  no_log: true
+
+- name: Initialize record comparison
+  ansible.builtin.set_fact:
+    record_needs_change: "{{ matching_records | length == 0 }}"
+    record_api_action: "{{ 'add_' if matching_records | length == 0 else 'set_' }}"
+    record_api_suffix: "{{ '' if matching_records | length == 0 else '/' + matching_records[0].uuid }}"
+
+- name: Compare owned fields
+  ansible.builtin.set_fact:
+    record_needs_change: true
+  loop: "{{ record.desired | dict2items }}"
+  loop_control:
+    loop_var: field
+    label: "{{ field.key }}"
+  when:
+    - matching_records | length == 1
+    - >-
+      (existing_dhcp_record.json[record.kind][field.key] is mapping and
+       not (existing_dhcp_record.json[record.kind][field.key][field.value | string].selected | default(0) | int == 1)) or
+      (existing_dhcp_record.json[record.kind][field.key] is not mapping and
+       existing_dhcp_record.json[record.kind][field.key] | string != field.value | string)
+
+- name: Preview DHCP record changes
+  ansible.builtin.debug:
+    msg: "{{ record.desired }}"
+  changed_when: record_needs_change
+
+- name: Save owned DHCP record
+  ansible.builtin.uri:
+    url: "{{ opnsense_url }}/api/dnsmasq/settings/{{ record_api_action }}{{ record.kind }}{{ record_api_suffix }}"
+    method: POST
+    body_format: json
+    body: "{{ {record.kind: record.desired} }}"
+  when: record_needs_change and not ansible_check_mode
+  register: dhcp_record_save
+  failed_when: dhcp_record_save.json.result | default('') != 'saved'
+  changed_when: true
+  no_log: true
+  notify: Apply Dnsmasq configuration

@@ -1,0 +1,51 @@
+---
+- name: Find the assigned VLAN by device
+  ansible.builtin.set_fact:
+    vlan_assignments: "{{ opnsense_assignments.json.rows | selectattr('if', 'equalto', vlan.device) | list }}"
+
+- name: Require the expected enabled interface and router address
+  ansible.builtin.assert:
+    that:
+      - vlan_assignments | length == 1
+      - vlan_assignments[0].enable == '1'
+      - vlan_assignments[0].ipaddr == vlan.address
+    fail_msg: "Assign and enable {{ vlan.device }} at {{ vlan.address }} in OPNsense first."
+
+- name: Record the actual assigned interface identifier
+  ansible.builtin.set_fact:
+    vlan_interface: "{{ vlan_assignments[0].identifier }}"
+    opnsense_dhcp_target_interfaces: "{{ opnsense_dhcp_target_interfaces + [vlan_assignments[0].identifier] }}"
+
+- name: Require DHCP is not excluded on this interface
+  ansible.builtin.assert:
+    that:
+      - opnsense_dnsmasq_settings.json.dnsmasq.dhcp.no_interface[vlan_interface].selected | default(0) | int == 0
+    fail_msg: "Remove {{ vlan_interface }} from Dnsmasq DHCP's excluded interfaces before proceeding."
+
+- name: Define owned DHCP records
+  ansible.builtin.set_fact:
+    vlan_dhcp_records:
+      - kind: range
+        rows: "{{ opnsense_dhcp_ranges.json.rows }}"
+        desired:
+          description: "Townhaus {{ vlan.name }} DHCP"
+          interface: "{{ vlan_interface }}"
+          start_addr: "{{ vlan.start }}"
+          end_addr: "{{ vlan.end }}"
+          subnet_mask: 255.255.255.0
+          lease_time: "86400"
+      - kind: option
+        rows: "{{ opnsense_dhcp_options.json.rows }}"
+        desired:
+          description: "Townhaus {{ vlan.name }} DNS"
+          interface: "{{ vlan_interface }}"
+          type: set
+          option: "6"
+          value: "{{ opnsense_dns_server }}"
+
+- name: Reconcile the VLAN DHCP records
+  ansible.builtin.include_tasks: opnsense_dhcp_record.yml
+  loop: "{{ vlan_dhcp_records }}"
+  loop_control:
+    loop_var: record
+    label: "{{ record.desired.description }}"

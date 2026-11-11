@@ -29,7 +29,7 @@ Native firewall monitoring is an opt-in, separate playbook: see
 | Groovenet | `https://groovenet` | Music streaming |
 | Home Assistant | `https://ha` | Home automation |
 | Scrypted | `https://scrypted` | Camera management |
-| UniFi | `https://unifi` | Network management |
+| UniFi | `https://unifi-admin.home.arpa` | Network management |
 | Beszel | `https://beszel` | Node monitoring |
 | Uptime Kuma | `https://uptime` | HTTP endpoint monitoring |
 | Grafana | `https://grafana` | Central log exploration and dashboards |
@@ -710,6 +710,8 @@ treating the backup as production-ready.
 
 DNS rewrites are managed declaratively in `ansible/group_vars/townhaus_caddy/beszel.yml` under `adguard_dns_rewrites`. Most entries resolve to beelink's LAN IP (the `adguard_dns_answer` default); Caddy there handles the reverse proxy. Run the beelink playbook to apply changes.
 
+The short name `unifi` resolves directly to the UniFi OS Server on Beelink at `192.168.2.151` for device discovery on port 8080. Use `https://unifi-admin.home.arpa` for the Caddy-proxied web interface on upstream port 11443; it resolves to Beelink. The previous `unifi.home.arpa` alias also remains available. Update the controller address in the local variables if it changes.
+
 An entry can override the answer per-domain — used for `*.groovenet-dev.home.arpa`, a wildcard that resolves straight to macm4mini's Tailscale IP so every `dj-playlist` herdr-task worktree gets a reachable hostname with no new DNS entry per worktree. That box runs its own Homebrew Caddy (`CADDY_HOST_SUFFIX=groovenet-dev.home.arpa`, set in its `~/.zshrc.local`) generating one vhost per worktree with `tls internal` — a different root CA from this repo's Docker Caddy, so trust it separately per remote device (same steps as "Caddy internal TLS" below, against `~/Library/Application Support/Caddy/pki/authorities/local/root.crt` on macm4mini instead of the Docker volume path).
 
 ## Uptime Kuma upgrades
@@ -796,3 +798,20 @@ http:
     - 192.168.0.0/16
     - 10.0.0.0/8
 ```
+
+## Network configuration and backups
+
+UniFi and OPNsense configuration is managed under [terraform/unifi](terraform/unifi/README.md)
+and [terraform/opnsense](terraform/opnsense/README.md). Ansible manages Dnsmasq
+DHCP pools that the Terraform provider does not support. See
+[UniFi OS Server](docs/unifi-os-server.md) for installation and migration.
+
+Download private, timestamped controller/router backups with:
+
+```sh
+bash scripts/network-backup.sh --opnsense-insecure
+```
+
+See [network backups](docs/network-backups.md) for validation, TLS, storage and
+scheduling details. Credentials stay in 1Password; backup files and Terraform
+state are excluded from Git.

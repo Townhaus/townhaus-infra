@@ -16,3 +16,17 @@ data/
 services/aswitch/env/*.env
 !services/aswitch/env/*.example.env
 .DS_Store
+
+# Terraform working data and secrets. Commit dependency lock files.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+
+# Router/controller backups contain credentials and private keys.
+/backups/
+__pycache__/
+*.pyc

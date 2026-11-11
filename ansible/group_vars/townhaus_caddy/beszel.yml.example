@@ -12,7 +12,7 @@ beszel_agent_user: root
 adguard_dns_answer: "192.168.1.x"
 
 # Declarative list of DNS rewrites to maintain in AdGuard.
-# Both the short name and the .home.arpa variant are needed for iOS/macOS compatibility.
+# Most short names and .home.arpa variants point to Caddy.
 adguard_dns_rewrites:
   - domain: start
   - domain: start.home.arpa
@@ -29,7 +29,11 @@ adguard_dns_rewrites:
   - domain: ha.home.arpa
     answer: "192.168.2.91"
   - domain: unifi
+    # UniFi devices use this name to discover the controller on port 8080.
+    answer: "192.168.2.151"
+  # The web shortcut continues to use Caddy.
   - domain: unifi.home.arpa
+  - domain: unifi-admin.home.arpa
   - domain: beszel
   - domain: beszel.home.arpa
   - domain: uptime
