@@ -1,0 +1,42 @@
+---
+- name: Configure UniFi admin DNS and Caddy shortcut
+  hosts: townhaus_caddy
+  gather_facts: false
+
+  roles:
+    - role: adguard_dns
+
+  tasks:
+    - name: Copy Caddy configuration
+      ansible.builtin.copy:
+        src: ../../Caddyfile
+        dest: "{{ townhaus_caddy_app_dir }}/Caddyfile"
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0644"
+      notify: Recreate Caddy for updated bind mount
+
+    - name: Update service portal
+      ansible.builtin.copy:
+        src: ../../services/portal/
+        dest: "{{ townhaus_caddy_app_dir }}/services/portal/"
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: preserve
+      become: true
+
+  handlers:
+    - name: Recreate Caddy for updated bind mount
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - -p
+          - "{{ townhaus_caddy_compose_project_name }}"
+          - up
+          - -d
+          - --no-deps
+          - --force-recreate
+          - caddy
+        chdir: "{{ townhaus_caddy_app_dir }}"
+      changed_when: true

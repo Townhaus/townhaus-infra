@@ -1,0 +1,115 @@
+---
+- name: Configure new VLAN DHCP pools through the OPNsense API
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  vars_files:
+    - ../vars/opnsense_networks.yml
+
+  module_defaults:
+    ansible.builtin.uri:
+      url_username: "{{ lookup('ansible.builtin.env', 'OPNSENSE_API_KEY') }}"
+      url_password: "{{ lookup('ansible.builtin.env', 'OPNSENSE_API_SECRET') }}"
+      force_basic_auth: true
+      validate_certs: "{{ opnsense_validate_certs }}"
+      follow_redirects: none
+      return_content: true
+      timeout: 30
+
+  tasks:
+    - name: Require API credentials from the 1Password wrapper
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.env', 'OPNSENSE_API_KEY') | length > 0
+          - lookup('ansible.builtin.env', 'OPNSENSE_API_SECRET') | length > 0
+        fail_msg: Run through scripts/opnsense-dhcp.sh to inject API credentials.
+
+    - name: Read interface assignments
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/interfaces/assignment/search_item?rowCount=-1"
+      register: opnsense_assignments
+      check_mode: false
+      no_log: true
+
+    - name: Read Dnsmasq settings
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/dnsmasq/settings/get"
+      register: opnsense_dnsmasq_settings
+      check_mode: false
+      no_log: true
+
+    - name: Read DHCP pools
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/dnsmasq/settings/search_range?rowCount=-1"
+      register: opnsense_dhcp_ranges
+      check_mode: false
+      no_log: true
+
+    - name: Read DHCP options
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/dnsmasq/settings/search_option?rowCount=-1"
+      register: opnsense_dhcp_options
+      check_mode: false
+      no_log: true
+
+    - name: Require valid API responses before any writes
+      ansible.builtin.assert:
+        that:
+          - opnsense_assignments.json.rows is defined
+          - opnsense_dhcp_ranges.json.rows is defined
+          - opnsense_dhcp_options.json.rows is defined
+          - opnsense_dnsmasq_settings.json.dnsmasq.interface is mapping
+          - opnsense_dnsmasq_settings.json.dnsmasq.enable == '1'
+        fail_msg: Check API privileges and the Dnsmasq settings response before proceeding.
+
+    - name: Read selected Dnsmasq listener interfaces
+      ansible.builtin.set_fact:
+        opnsense_dnsmasq_selected: >-
+          {{ opnsense_dnsmasq_settings.json.dnsmasq.interface | dict2items |
+             selectattr('value.selected', 'in', [1, '1', true]) | map(attribute='key') | list }}
+        opnsense_dhcp_target_interfaces: []
+
+    - name: Reconcile each VLAN's DHCP configuration
+      ansible.builtin.include_tasks: ../tasks/opnsense_dhcp_vlan.yml
+      loop: "{{ opnsense_vlan_dhcp }}"
+      loop_control:
+        loop_var: vlan
+        label: "{{ vlan.name }}"
+
+    - name: Include new VLANs in explicitly selected Dnsmasq listeners
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/dnsmasq/settings/set"
+        method: POST
+        body_format: json
+        body:
+          dnsmasq:
+            interface: "{{ (opnsense_dnsmasq_selected + opnsense_dhcp_target_interfaces) | unique | join(',') }}"
+      register: opnsense_listener_update
+      when:
+        - not ansible_check_mode
+        # Empty selection means all interfaces; preserve that meaning.
+        - opnsense_dnsmasq_selected | length > 0
+        - opnsense_dhcp_target_interfaces | difference(opnsense_dnsmasq_selected) | length > 0
+      failed_when: opnsense_listener_update.json.result | default('') != 'saved'
+      changed_when: true
+      no_log: true
+      notify: Apply Dnsmasq configuration
+
+    - name: Preview listener additions
+      ansible.builtin.debug:
+        msg: "Dnsmasq will include {{ opnsense_dhcp_target_interfaces | join(', ') }}; existing listener selection is preserved."
+      when: ansible_check_mode
+
+  handlers:
+    - name: Apply Dnsmasq configuration
+      ansible.builtin.uri:
+        url: "{{ opnsense_url }}/api/dnsmasq/service/reconfigure"
+        method: POST
+        body_format: json
+        body: {}
+      register: opnsense_dnsmasq_apply
+      failed_when: opnsense_dnsmasq_apply.json.status | default('') not in ['ok', 'OK']
+      changed_when: true
+      no_log: true

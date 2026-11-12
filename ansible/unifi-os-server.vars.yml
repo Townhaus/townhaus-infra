@@ -1,0 +1,5 @@
+---
+# UniFi OS Server 5.1.42, official Linux x64 installer.
+# SHA-256 calculated from the installer downloaded over HTTPS from this URL.
+unifi_os_server_installer_url: "https://fw-download.ubnt.com/data/unifi-os-server/5172-linux-x64-5.1.42-12e9e3cf-8f8b-4e54-928c-76b80a10c8a4.42-x64"
+unifi_os_server_installer_sha256: "f6111e9396a42c74016f5dde9b01fbef486a6fe69efe137935e6e38b7c22f94d"

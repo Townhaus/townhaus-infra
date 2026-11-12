@@ -89,16 +89,16 @@ immich, immich.home.arpa {
 	reverse_proxy http://immich-server:2283
 }
 
-# UniFi appliance UI:
+# UniFi OS Server admin UI:
 # - https://unifi
 # - https://unifi.home.arpa
-# Upstream uses HTTPS on 8443 and commonly presents a self-signed cert.
-unifi, unifi.home.arpa {
+# Upstream uses HTTPS on 11443 with a self-signed certificate.
+unifi, unifi.home.arpa, unifi-admin.home.arpa {
 	import common
-	reverse_proxy https://192.168.2.91:8443 {
-		header_up Host 192.168.2.91:8443
-		header_up X-Forwarded-Host {host}
-		header_up X-Forwarded-Proto https
+	reverse_proxy https://192.168.2.151:11443 {
+		# Keep the browser Host aligned with Origin for UniFi's API/WebSockets.
+		# Caddy 2.11 otherwise replaces Host for HTTPS upstreams.
+		header_up Host {hostport}
 		transport http {
 			tls_insecure_skip_verify
 		}

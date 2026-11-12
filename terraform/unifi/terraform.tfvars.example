@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars. GREATWHITE is defined/imported separately in home.tf.
+# VLANs and both new SSIDs are defined in the checked-in defaults.
+controller_url = "https://unifi-admin.home.arpa"
+site           = "default"
+# VLANs 20 and 30 are defined in the checked-in defaults; do not override with {}.
+# Remove old wifi_networks = {} overrides to use those SSID definitions.

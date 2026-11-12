@@ -1,0 +1,15 @@
+---
+opnsense_url: https://192.168.2.1
+opnsense_validate_certs: true
+opnsense_dns_server: 192.168.2.151
+opnsense_vlan_dhcp:
+  - name: IoT
+    device: vlan02
+    address: 192.168.20.1/24
+    start: 192.168.20.100
+    end: 192.168.20.199
+  - name: Guest
+    device: vlan01
+    address: 192.168.30.1/24
+    start: 192.168.30.100
+    end: 192.168.30.199
