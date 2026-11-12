@@ -1,0 +1,7 @@
+---
+- name: Deploy Frigate configuration
+  hosts: townhaus_caddy
+  gather_facts: true
+
+  roles:
+    - role: frigate

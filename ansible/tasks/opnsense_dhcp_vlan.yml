@@ -24,7 +24,7 @@
 
 - name: Define owned DHCP records
   ansible.builtin.set_fact:
-    vlan_dhcp_records:
+    vlan_dhcp_range_records:
       - kind: range
         rows: "{{ opnsense_dhcp_ranges.json.rows }}"
         desired:
@@ -34,6 +34,7 @@
           end_addr: "{{ vlan.end }}"
           subnet_mask: 255.255.255.0
           lease_time: "86400"
+    vlan_dhcp_dns_records:
       - kind: option
         rows: "{{ opnsense_dhcp_options.json.rows }}"
         desired:
@@ -42,6 +43,10 @@
           type: set
           option: "6"
           value: "{{ opnsense_dns_server }}"
+
+- name: Select DHCP records for this VLAN
+  ansible.builtin.set_fact:
+    vlan_dhcp_records: "{{ vlan_dhcp_range_records + (vlan_dhcp_dns_records if vlan.dns_option | default(true) | bool else []) }}"
 
 - name: Reconcile the VLAN DHCP records
   ansible.builtin.include_tasks: opnsense_dhcp_record.yml

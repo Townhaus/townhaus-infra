@@ -1,0 +1,10 @@
+---
+# Pass explicitly with -e @ansible/vars/opnsense_camera_dhcp.yml.
+# Replaces the default VLAN list for this run; no DNS server option is added.
+opnsense_vlan_dhcp:
+  - name: Cameras
+    device: vlan03
+    address: 192.168.40.1/24
+    start: 192.168.40.100
+    end: 192.168.40.199
+    dns_option: false
