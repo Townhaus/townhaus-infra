@@ -79,12 +79,13 @@ shairport_mqtt_publish_parsed: "yes"
 shairport_mqtt_publish_cover: "yes"
 shairport_mqtt_enable_remote: "no"
 shairport_mpris_mqtt_bridge_enabled: true
-# The amp trigger relay powers the ZD3. Turn it on before Shairport opens the
-# card: Home Assistant's play_start automation arrives too late to win that race.
+# The ZD3 appears over USB only once powered and on its USB input. Before
+# Shairport opens the card, ask Home Assistant's ZD3 controller (it subscribes to
+# this topic) to run that sequence; play_start arrives only after the hook.
 # CamillaDSP owns the ZD3 when enabled, and Shairport then plays to a loopback.
 shairport_dac_wake_enabled: "{{ not (camilladsp_enabled | bool) }}"
 shairport_dac_wake_card: ZD3
-shairport_dac_wake_topic: "{{ aswitch_env_extra.AMP_TRIGGER_COMMAND_TOPIC }}"
+shairport_dac_wake_topic: "{{ shairport_mqtt_topic }}/dac_wake"
 shairport_systemd_after: >-
   {{ ['sound.target', 'camilladsp.service', 'network.target', 'nss-lookup.target']
      if (camilladsp_enabled | bool)

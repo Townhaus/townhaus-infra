@@ -25,8 +25,8 @@ MQTT_CLIENT_ID=shairport-dac-wake
 MQTT_USERNAME_B64={b64("user")}
 MQTT_PASSWORD_B64={b64("p=ss word")}
 DAC_WAKE_CARD=ZD3
-DAC_WAKE_TOPIC=pi-cam/trigger
-DAC_WAKE_PAYLOAD=on
+DAC_WAKE_TOPIC=pi-cam/shairport/dac_wake
+DAC_WAKE_PAYLOAD=usb
 DAC_WAKE_TIMEOUT_SECONDS=3
 """
 
@@ -99,33 +99,33 @@ class DacWakeTest(unittest.TestCase):
         self.assertTrue(hook.card_present("ZD3", root))
 
     def test_present_card_skips_mqtt(self):
-        powered = []
-        result = hook.main(self.config_path, present=lambda card: True, power=powered.append)
+        woken = []
+        result = hook.main(self.config_path, present=lambda card: True, wake=woken.append)
         self.assertEqual(result, 0)
-        self.assertEqual(powered, [])
+        self.assertEqual(woken, [])
 
-    def test_missing_card_powers_relay_and_waits(self):
-        powered, waited = [], []
+    def test_missing_card_requests_wake_and_waits(self):
+        woken, waited = [], []
 
         def wait(card, timeout, present):
             waited.append((card, timeout))
             return True
 
         result = hook.main(
-            self.config_path, present=lambda card: False, power=powered.append, wait=wait
+            self.config_path, present=lambda card: False, wake=woken.append, wait=wait
         )
         self.assertEqual(result, 0)
-        self.assertEqual(powered[0]["DAC_WAKE_TOPIC"], "pi-cam/trigger")
+        self.assertEqual(woken[0]["DAC_WAKE_TOPIC"], "pi-cam/shairport/dac_wake")
         self.assertEqual(waited, [("ZD3", 3.0)])
 
-    def test_power_failure_still_waits_for_home_assistant(self):
-        def power(config):
+    def test_wake_failure_still_waits_for_the_card(self):
+        def wake(config):
             raise OSError("broker unreachable")
 
         result = hook.main(
             self.config_path,
             present=lambda card: False,
-            power=power,
+            wake=wake,
             wait=lambda card, timeout, present: True,
         )
         self.assertEqual(result, 0)
@@ -134,7 +134,7 @@ class DacWakeTest(unittest.TestCase):
         result = hook.main(
             self.config_path,
             present=lambda card: False,
-            power=lambda config: None,
+            wake=lambda config: None,
             wait=lambda card, timeout, present: False,
         )
         self.assertEqual(result, 1)
@@ -163,18 +163,18 @@ class DacWakeTest(unittest.TestCase):
         )
         self.assertGreaterEqual(now[0], 1)
 
-    def test_request_power_publishes_relay_on_with_decoded_credentials(self):
+    def test_request_wake_publishes_usb_with_decoded_credentials(self):
         mqtt = FakeMqtt()
-        hook.request_power(hook.load_config(self.config_path), mqtt=mqtt)
+        hook.request_wake(hook.load_config(self.config_path), mqtt=mqtt)
         self.assertIn(("auth", "user", "p=ss word"), mqtt.calls)
         self.assertIn(("connect", "homeassistant.local", 1883, 10), mqtt.calls)
-        self.assertIn(("publish", "pi-cam/trigger", "on", 1), mqtt.calls)
+        self.assertIn(("publish", "pi-cam/shairport/dac_wake", "usb", 1), mqtt.calls)
         self.assertEqual(mqtt.calls[-1], ("disconnect",))
 
-    def test_request_power_raises_when_publish_is_not_acknowledged(self):
+    def test_request_wake_raises_when_publish_is_not_acknowledged(self):
         mqtt = FakeMqtt(published=False)
         with self.assertRaises(RuntimeError):
-            hook.request_power(hook.load_config(self.config_path), mqtt=mqtt)
+            hook.request_wake(hook.load_config(self.config_path), mqtt=mqtt)
         self.assertEqual(mqtt.calls[-1], ("disconnect",))
 
 
