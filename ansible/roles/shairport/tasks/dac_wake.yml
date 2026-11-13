@@ -1,0 +1,45 @@
+---
+- name: Validate DAC wake settings
+  ansible.builtin.assert:
+    that:
+      - shairport_dac_wake_card | length > 0
+      - shairport_dac_wake_topic | length > 0
+      - (shairport_mqtt_enabled | lower) in ['yes', 'true', 'on', '1']
+    fail_msg: >-
+      shairport_dac_wake_enabled needs shairport_dac_wake_card,
+      shairport_dac_wake_topic and Shairport MQTT credentials.
+
+- name: Install DAC wake hook dependencies
+  ansible.builtin.apt:
+    name: python3-paho-mqtt
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure DAC wake hook directory exists
+  ansible.builtin.file:
+    path: "{{ shairport_dac_wake_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install DAC wake hook
+  ansible.builtin.copy:
+    src: shairport_dac_wake.py
+    dest: "{{ shairport_dac_wake_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install private settings for DAC wake hook
+  ansible.builtin.template:
+    src: shairport-dac-wake.env.j2
+    dest: "{{ shairport_dac_wake_config_path }}"
+    owner: root
+    group: shairport-sync
+    mode: "0640"
+  become: true
+  no_log: true

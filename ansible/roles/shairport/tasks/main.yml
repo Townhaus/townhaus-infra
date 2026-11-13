@@ -86,6 +86,10 @@
     timeout: 5
   when: (shairport_mqtt_enabled | lower) in ['yes', 'true', 'on', '1']
 
+- name: Install DAC wake hook before Shairport configs reference it
+  ansible.builtin.import_tasks: dac_wake.yml
+  when: shairport_dac_wake_enabled | bool
+
 - name: Deploy shairport-sync config
   ansible.builtin.template:
     src: shairport-sync.conf.j2
