@@ -44,6 +44,14 @@ metadata = {
   pipe_name = "{{ shairport_metadata_pipe_name }}";
 };
 
+{% if shairport_dac_wake_enabled | bool %}
+sessioncontrol = {
+  // Power the DAC and wait for its ALSA card; Shairport exits if it is missing.
+  run_this_before_play_begins = "{{ shairport_dac_wake_path }} {{ shairport_dac_wake_config_path }}";
+  wait_for_completion = "yes";
+};
+
+{% endif %}
 diagnostics = {
   log_verbosity = {{ shairport_log_verbosity | default(1) }};
 };

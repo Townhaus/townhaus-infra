@@ -48,6 +48,7 @@ check:
     just lint
     just test-groovenet-deploy
     just test-opnsense-beszel
+    just test-shairport-dac-wake
     git diff --check
 
 # Lint Ansible content. Use `pre-commit install` once to run this automatically before commits.
@@ -65,6 +66,10 @@ deploy-stack:
 # Test GrooveNET player preservation without contacting hosts or Docker.
 test-groovenet-deploy:
     python3 scripts/test-groovenet-deploy.py
+
+# Test the Shairport DAC wake hook without MQTT, ALSA or a Pi.
+test-shairport-dac-wake:
+    python3 scripts/test-shairport-dac-wake.py
 
 # Exercise native OPNsense guards and lifecycle artifacts entirely offline.
 test-opnsense-beszel:
