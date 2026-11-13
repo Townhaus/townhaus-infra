@@ -12,6 +12,7 @@ on:
       - "scripts/check-markdown-links.py"
       - "scripts/test-groovenet-deploy.py"
       - "scripts/test-opnsense-beszel.py"
+      - "scripts/test-shairport-dac-wake.py"
       - ".github/fixtures/**"
       - ".pre-commit-config.yaml"
       - "Justfile"
@@ -28,6 +29,7 @@ on:
       - "scripts/check-markdown-links.py"
       - "scripts/test-groovenet-deploy.py"
       - "scripts/test-opnsense-beszel.py"
+      - "scripts/test-shairport-dac-wake.py"
       - ".github/fixtures/**"
       - ".pre-commit-config.yaml"
       - "Justfile"
@@ -58,6 +60,9 @@ jobs:
 
       - name: Test GrooveNET deployment preservation
         run: python scripts/test-groovenet-deploy.py
+
+      - name: Test Shairport DAC wake hook
+        run: python scripts/test-shairport-dac-wake.py
 
       - name: Test OPNsense Beszel guards and lifecycle artifacts offline
         run: python scripts/test-opnsense-beszel.py

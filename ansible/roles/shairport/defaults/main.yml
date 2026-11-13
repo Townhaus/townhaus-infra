@@ -38,3 +38,12 @@ shairport_airplay2_nqptp_service_name: nqptp-airplay2.service
 shairport_metadata_pipe_name: /tmp/shairport-sync-metadata
 shairport_mpris_mqtt_bridge_enabled: false
 shairport_mpris_mqtt_client_id: shairport-mpris-metadata-bridge
+# Power a USB DAC over MQTT and wait for its ALSA card before play begins.
+shairport_dac_wake_enabled: false
+shairport_dac_wake_path: /usr/local/libexec/shairport-dac-wake
+shairport_dac_wake_config_path: /etc/default/shairport-dac-wake
+shairport_dac_wake_client_id: shairport-dac-wake
+shairport_dac_wake_card: ""
+shairport_dac_wake_topic: ""
+shairport_dac_wake_payload: "on"
+shairport_dac_wake_timeout_seconds: 20
