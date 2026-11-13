@@ -50,6 +50,16 @@ uptime_kuma_monitors:
     url: http://192.168.2.151:8090
   - name: Frigate
     url: http://192.168.2.151:5000
+  # Camera VLAN reservations documented in docs/camera-network.md.
+  - name: Camera - Oficina
+    type: ping
+    hostname: 192.168.40.20
+  - name: Camera - Backyard
+    type: ping
+    hostname: 192.168.40.21
+  - name: Camera - Front doorbell
+    type: ping
+    hostname: 192.168.40.22
   - name: Groovenet
     url: http://webapp:3000
   - name: Groovenet backup
