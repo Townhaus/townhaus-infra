@@ -1,15 +1,18 @@
 #!/usr/bin/python3
-"""Power the USB DAC and wait for its ALSA card before Shairport Sync opens it.
+"""Wake the USB DAC and wait for its ALSA card before Shairport Sync opens it.
 
 Shairport Sync runs this as `run_this_before_play_begins` with
 `wait_for_completion = "yes"`. Shairport opens the ALSA device as soon as play
 begins and exits on ENODEV when the card is missing, so the DAC has to be
-powered and enumerated first. Home Assistant only learns about the session from
-Shairport's MQTT play_start event, which is too late to win that race.
+powered and enumerated first. Shairport publishes play_start only after this
+hook returns, so Home Assistant needs its own request to act on.
+
+The ZD3 enumerates only once it is powered and on its USB input. Home
+Assistant owns that sequence (relay on, wait for it to boot, IR to USB), so the
+hook asks it to run the sequence and never switches the relay itself: seeing
+the relay already on, Home Assistant would send IR before the DAC can receive it.
 
 When the card is already present this returns immediately, without MQTT.
-Otherwise it asks the amp trigger relay to switch on over MQTT and waits for the
-card. Home Assistant still chooses the DAC input and owns power-off.
 """
 
 import base64
@@ -40,7 +43,7 @@ def card_present(card, asound_root="/proc/asound"):
     return (Path(asound_root) / card).exists()
 
 
-def request_power(config, mqtt=None):
+def request_wake(config, mqtt=None):
     if mqtt is None:
         import paho.mqtt.client as mqtt
 
@@ -55,7 +58,7 @@ def request_power(config, mqtt=None):
     client.connect(config["MQTT_HOST"], int(config["MQTT_PORT"]), 10)
     client.loop_start()
     try:
-        info = client.publish(config["DAC_WAKE_TOPIC"], config.get("DAC_WAKE_PAYLOAD", "on"), qos=1)
+        info = client.publish(config["DAC_WAKE_TOPIC"], config.get("DAC_WAKE_PAYLOAD", "usb"), qos=1)
         info.wait_for_publish(timeout=5)
         if not info.is_published():
             raise RuntimeError(f"MQTT publish to {config['DAC_WAKE_TOPIC']} was not acknowledged")
@@ -74,20 +77,20 @@ def wait_for_card(card, timeout, present=card_present, clock=time.monotonic, sle
         sleep(0.25)
 
 
-def main(config_path=None, present=card_present, power=request_power, wait=wait_for_card):
+def main(config_path=None, present=card_present, wake=request_wake, wait=wait_for_card):
     config = load_config(config_path or DEFAULT_CONFIG_PATH)
     card = config["DAC_WAKE_CARD"]
     if present(card):
         return 0
 
     started = time.monotonic()
-    log(f"ALSA card {card} is missing; requesting DAC power")
+    log(f"ALSA card {card} is missing; asking Home Assistant to wake the DAC")
     try:
-        power(config)
-    except Exception as error:  # Home Assistant may still power it from play_start.
-        log(f"power request failed: {error}")
+        wake(config)
+    except Exception as error:  # The DAC may already be on its way up.
+        log(f"wake request failed: {error}")
 
-    timeout = float(config.get("DAC_WAKE_TIMEOUT_SECONDS", "20"))
+    timeout = float(config.get("DAC_WAKE_TIMEOUT_SECONDS", "30"))
     if wait(card, timeout, present=present):
         log(f"ALSA card {card} appeared after {time.monotonic() - started:.1f}s")
         return 0

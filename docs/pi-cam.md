@@ -71,14 +71,17 @@ Shairport uses `auto` interpolation and sends 44.1 kHz, `S32_LE` audio directly
 to `plughw:CARD=ZD3,DEV=0`. The ZD3 controls volume.
 
 Shairport opens that card the moment play begins and exits on "no such device"
-if the ZD3 is unpowered. Home Assistant's ZD3 controller reacts to the MQTT
-`play_start` event, which is too late. So before each play, the
+if the ZD3 is missing. The ZD3 appears over USB only once it is powered and on
+its USB input, and Shairport publishes `play_start` only after play begins, too
+late for Home Assistant to react. So before each play, the
 `run_this_before_play_begins` hook (`shairport-dac-wake`) checks for the `ZD3`
-ALSA card. If it is missing, the hook publishes `on` to `pi-cam/trigger`, the
-amp trigger relay that powers the ZD3, and holds the session for up to 20
-seconds until the card appears. When the card is already present it returns
-straight away. Home Assistant still selects the input and powers everything down
-once the session is idle. Watch it with
+ALSA card. If it is missing, the hook publishes `usb` to
+`pi-cam/shairport/dac_wake` and holds the session for up to 30 seconds until the
+card appears. Home Assistant's "Audio - ZD3 power and source controller"
+subscribes to that topic and runs its usual sequence: trigger relay on, a pause
+for the ZD3 to boot, then IR to USB. The hook never switches the relay itself.
+When the card is already present it returns straight away. Home Assistant still
+powers everything down once the session is idle. Watch it with
 `journalctl -u shairport-sync-airplay2 | grep shairport-dac-wake`.
 
 CamillaDSP is disabled, so its EQ presets do not affect playback. The deployment
