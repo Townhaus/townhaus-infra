@@ -1,0 +1,101 @@
+---
+- name: Move Raspberry Pis to GREATWHITE-HAUS
+  hosts: aswitch:pi_cam
+  serial: 1
+  gather_facts: false
+  become: true
+  vars:
+    new_wifi_name: GREATWHITE-HAUS
+    old_wifi_name: "{{ 'netplan-wlan0-GREATWHITE' if 'aswitch' in group_names else 'preconfigured' }}"
+    wifi_password: "{{ lookup('ansible.builtin.env', 'PI_HOME_WIFI_PASSWORD') }}"
+    wifi_profile_path: /etc/NetworkManager/system-connections/GREATWHITE-HAUS.nmconnection
+  tasks:
+    - name: Check that a Wi-Fi password was supplied
+      ansible.builtin.assert:
+        that:
+          - wifi_password | length >= 8
+          - wifi_password | length <= 63
+        fail_msg: Supply PI_HOME_WIFI_PASSWORD through 1Password.
+      no_log: true
+
+    - name: Check for an existing profile file
+      ansible.builtin.stat:
+        path: "{{ wifi_profile_path }}"
+      register: wifi_profile
+
+    - name: Avoid replacing an existing profile
+      ansible.builtin.assert:
+        that: not wifi_profile.stat.exists
+        fail_msg: The new profile already exists; inspect it before continuing.
+
+    - name: Create the new NetworkManager profile
+      ansible.builtin.copy:
+        dest: "{{ wifi_profile_path }}"
+        owner: root
+        group: root
+        mode: '0600'
+        content: |
+          [connection]
+          id=GREATWHITE-HAUS
+          type=wifi
+          interface-name=wlan0
+          autoconnect=true
+          autoconnect-priority=100
+
+          [wifi]
+          mode=infrastructure
+          ssid=GREATWHITE-HAUS
+          powersave=2
+
+          [wifi-security]
+          key-mgmt=wpa-psk
+          psk={{ wifi_password }}
+
+          [ipv4]
+          method=auto
+
+          [ipv6]
+          method=auto
+      no_log: true
+      diff: false
+
+    - name: Load the new connection profile
+      ansible.builtin.command:
+        argv: [nmcli, connection, load, "{{ wifi_profile_path }}"]
+      changed_when: true
+
+    - name: Schedule fallback to the previous connection
+      ansible.builtin.command:
+        argv:
+          - systemd-run
+          - --unit=pi-wifi-migration-rollback
+          - /bin/sh
+          - -c
+          - "sleep 90; exec nmcli connection up id {{ old_wifi_name | quote }} ifname wlan0"
+      changed_when: true
+
+    - name: Activate the new connection
+      ansible.builtin.command:
+        argv: [nmcli, connection, up, id, "{{ new_wifi_name }}", ifname, wlan0]
+      async: 45
+      poll: 0
+      changed_when: true
+
+    - name: Reconnect to the Pi over the LAN
+      ansible.builtin.wait_for_connection:
+        delay: 8
+        sleep: 3
+        connect_timeout: 5
+        timeout: 65
+
+    - name: Verify the new Wi-Fi connection is active
+      ansible.builtin.command:
+        argv: [nmcli, -g, GENERAL.CONNECTION, device, show, wlan0]
+      register: active_wifi
+      changed_when: false
+      failed_when: active_wifi.stdout | trim != new_wifi_name
+
+    - name: Cancel the scheduled fallback
+      ansible.builtin.command:
+        argv: [systemctl, stop, pi-wifi-migration-rollback.service]
+      changed_when: true

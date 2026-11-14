@@ -47,7 +47,7 @@ on aswitch and publishes track metadata and binary cover art under the existing
 client continues to publish playback events and status.
 
 The `pi_wifi` role disables power saving on the existing
-`netplan-wlan0-GREATWHITE` NetworkManager connection and on the active `wlan0`
+`GREATWHITE-HAUS` NetworkManager connection and on the active `wlan0`
 interface. Both the full deployment and `just deploy-aswitch-wifi` apply it
 without reconnecting Wi-Fi. Verify the active setting with:
 

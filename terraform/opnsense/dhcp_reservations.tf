@@ -55,6 +55,24 @@ locals {
       mac_address = "44:1b:f6:d4:52:c0"
       description = "Townhaus oficina ESPHome DHCP reservation"
     }
+    shelly_gas = {
+      hostname    = "shelly-gas"
+      ip_address  = "192.168.20.57"
+      mac_address = "7c:87:ce:bc:f1:66"
+      description = "Townhaus Shelly Gas DHCP reservation"
+    }
+    shelly_smoke_alarm = {
+      hostname    = "shelly-smoke-alarm"
+      ip_address  = "192.168.20.58"
+      mac_address = "cc:7b:5c:0d:14:2c"
+      description = "Townhaus Shelly smoke detector alarm DHCP reservation"
+    }
+    boiler = {
+      hostname    = "boiler"
+      ip_address  = "192.168.20.59"
+      mac_address = "98:f4:ab:b2:60:04"
+      description = "Townhaus boiler DHCP reservation"
+    }
   }
 }
 

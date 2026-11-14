@@ -15,6 +15,7 @@ locals {
   wifi_passphrases = {
     iot   = var.iot_wifi_password
     guest = var.guest_wifi_password
+    haus  = var.haus_wifi_password
   }
 }
 

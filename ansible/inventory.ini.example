@@ -6,3 +6,7 @@ aswitch_host ansible_host=aswitch.local ansible_user=saegey
 
 [pi_cam]
 pi_cam_host ansible_host=pi-cam.local ansible_user=saegey
+
+[pis:children]
+aswitch
+pi_cam

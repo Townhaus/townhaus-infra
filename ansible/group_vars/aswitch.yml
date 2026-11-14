@@ -2,7 +2,8 @@
 aswitch_app_dir: "{{ remote_home }}/aswitch"
 recording_archive_enabled: true
 
-pi_wifi_connection_name: netplan-wlan0-GREATWHITE
+pi_wifi_connection_name: GREATWHITE-HAUS
+tailscale_package_state: absent
 
 dotfiles_enabled: true
 dotfiles_manage_packages: false

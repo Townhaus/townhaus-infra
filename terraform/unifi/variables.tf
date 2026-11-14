@@ -51,6 +51,15 @@ variable "wifi_networks" {
     pmf_mode         = optional(string, "disabled")
   }))
   default = {
+    haus = {
+      ssid             = "GREATWHITE-HAUS"
+      user_group_id    = "5d8fd4c09cd9a20667736258"
+      network_id       = "5d8fd4c09cd9a20667736257"
+      client_isolation = false
+      wpa3_support     = true
+      wpa3_transition  = true
+      pmf_mode         = "optional"
+    }
     iot = {
       ssid             = "GREATWHITE-IoT"
       user_group_id    = "5d8fd4c09cd9a20667736258"
@@ -86,6 +95,18 @@ variable "iot_wifi_password" {
   validation {
     condition     = length(var.iot_wifi_password) >= 8 && length(var.iot_wifi_password) <= 63
     error_message = "IoT Wi-Fi password must have 8–63 characters."
+  }
+}
+
+variable "haus_wifi_password" {
+  description = "GREATWHITE-HAUS password, injected by op run from 1Password."
+  type        = string
+  sensitive   = true
+  ephemeral   = true
+
+  validation {
+    condition     = length(var.haus_wifi_password) >= 8 && length(var.haus_wifi_password) <= 63
+    error_message = "Home Wi-Fi password must have 8–63 characters."
   }
 }
 
