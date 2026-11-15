@@ -55,10 +55,7 @@ adguard_dns_rewrites:
     answer: "192.168.2.171"
   - domain: herdr
   - domain: herdr.home.arpa
-  # Wildcard for groovenet dev worktrees (dj-playlist): each herdr-task
-  # worktree gets its own Caddy vhost on macm4mini (its own Homebrew Caddy,
-  # a separate internal CA from this box's Docker Caddy — see the README's
-  # "Caddy internal TLS" section for the trust steps, done per remote device
-  # against macm4mini's root cert instead of this host's).
+  # Wildcard for groovenet dev worktrees (dj-playlist): resolves to this box
+  # like everything else; the Caddyfile's *.groovenet-dev.home.arpa site
+  # proxies to macm4mini's Homebrew Caddy over the LAN.
   - domain: "*.groovenet-dev.home.arpa"
-    answer: "100.115.36.23" # macm4mini's Tailscale IP

@@ -181,6 +181,9 @@ homeassistant {
 # connection to that machine (including every groovenet dev worktree vhost).
 # macm4mini's own Caddy (tls internal) now owns :443 there exclusively.
 #
+# Upstream is macm4mini's LAN IP, not its Tailscale IP, so LAN clients don't
+# depend on Tailscale being up on either machine.
+#
 # herdr-web-ui does its own Origin validation against the Host header it
 # sees (see its docs' reverse-proxy section): forwarding a different Host
 # than the browser's origin trips "invalid_origin" (403). macm4mini's Caddy
@@ -189,10 +192,30 @@ homeassistant {
 # TLS leg's SNI/cert, independent of the HTTP Host forwarded to the app.
 herdr, herdr.home.arpa {
 	import common
-	reverse_proxy https://100.115.36.23 {
+	reverse_proxy https://{$MACM4MINI_LAN_IP:192.168.2.169} {
 		header_up Host {host}
 		transport http {
 			tls_server_name herdr.home.arpa
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+# dj-playlist (groovenet) dev worktrees on the Mac mini:
+# - https://<worktree-slug>.groovenet-dev.home.arpa
+# Each `just herdr-task` worktree gets a vhost in macm4mini's Homebrew Caddy
+# (scripts/worktree in dj-playlist, CADDY_HOST_SUFFIX=groovenet-dev.home.arpa).
+# This wildcard terminates TLS here with this box's internal CA (one wildcard
+# cert, no new DNS entry or cert per worktree) and forwards over the LAN, so
+# browsers trust one CA and nothing depends on Tailscale. Host and SNI are the
+# requested name, which is what selects the worktree's vhost on macm4mini.
+# Off-LAN devices reach this box over Tailscale like every other vhost here.
+*.groovenet-dev.home.arpa {
+	import common
+	reverse_proxy https://{$MACM4MINI_LAN_IP:192.168.2.169} {
+		header_up Host {host}
+		transport http {
+			tls_server_name {http.request.host}
 			tls_insecure_skip_verify
 		}
 	}

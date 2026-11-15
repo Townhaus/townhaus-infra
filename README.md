@@ -712,7 +712,7 @@ DNS rewrites are managed declaratively in `ansible/group_vars/townhaus_caddy/bes
 
 The short name `unifi` resolves directly to the UniFi OS Server on Beelink at `192.168.2.151` for device discovery on port 8080. Use `https://unifi-admin.home.arpa` for the Caddy-proxied web interface on upstream port 11443; it resolves to Beelink. The previous `unifi.home.arpa` alias also remains available. Update the controller address in the local variables if it changes.
 
-An entry can override the answer per-domain — used for `*.groovenet-dev.home.arpa`, a wildcard that resolves straight to macm4mini's Tailscale IP so every `dj-playlist` herdr-task worktree gets a reachable hostname with no new DNS entry per worktree. That box runs its own Homebrew Caddy (`CADDY_HOST_SUFFIX=groovenet-dev.home.arpa`, set in its `~/.zshrc.local`) generating one vhost per worktree with `tls internal` — a different root CA from this repo's Docker Caddy, so trust it separately per remote device (same steps as "Caddy internal TLS" below, against `~/Library/Application Support/Caddy/pki/authorities/local/root.crt` on macm4mini instead of the Docker volume path).
+An entry can override the answer per-domain with `answer:`. `*.groovenet-dev.home.arpa` no longer does: it resolves to beelink like everything else, and the Caddyfile's wildcard site proxies each `dj-playlist` herdr-task worktree hostname to macm4mini's Homebrew Caddy over the LAN (`192.168.2.169`, override with `MACM4MINI_LAN_IP`). That box generates one vhost per worktree (`CADDY_HOST_SUFFIX=groovenet-dev.home.arpa`, set in its `~/.zshrc.local`). Browsers only see this repo's Caddy CA, so there's no second root certificate to trust, and nothing depends on Tailscale for LAN clients.
 
 ## Uptime Kuma upgrades
 
