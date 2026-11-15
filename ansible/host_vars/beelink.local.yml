@@ -1,0 +1,7 @@
+---
+# Store the existing saegey sudo/login password in this Homelab item.
+# Refuse the placeholder before attempting authentication against the server.
+ansible_become_password: >-
+  {% set password = lookup('community.general.onepassword', 'Beelink Sudo', vault='Homelab', field='password') %}{{
+  password if password != 'REPLACE_WITH_EXISTING_SUDO_PASSWORD'
+  else undef(hint='Update Homelab / Beelink Sudo / password before using sudo') }}
