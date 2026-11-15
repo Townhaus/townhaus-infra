@@ -2,6 +2,7 @@
 - name: Manage Tailscale on the Raspberry Pi hosts
   hosts: pis
   gather_facts: true
+  serial: 1
 
   roles:
     - role: tailscale

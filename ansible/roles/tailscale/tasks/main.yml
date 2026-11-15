@@ -7,6 +7,7 @@
     state: present
     update_cache: true
   become: true
+  when: tailscale_package_state == 'present'
 
 - name: Install Tailscale APT repository signing key
   ansible.builtin.get_url:
@@ -14,6 +15,7 @@
     dest: "{{ tailscale_keyring_path }}"
     mode: "0644"
   become: true
+  when: tailscale_package_state == 'present'
 
 - name: Configure Tailscale APT repository
   ansible.builtin.apt_repository:
@@ -24,6 +26,7 @@
     filename: tailscale
     state: present
   become: true
+  when: tailscale_package_state == 'present'
 
 - name: Install Tailscale
   ansible.builtin.apt:
@@ -31,6 +34,7 @@
     state: "{{ tailscale_package_state }}"
     update_cache: true
   become: true
+  when: tailscale_package_state == 'present'
 
 - name: Enable and start Tailscale daemon
   ansible.builtin.systemd:
@@ -39,3 +43,12 @@
     state: started
     daemon_reload: true
   become: true
+  when: tailscale_package_state == 'present'
+
+- name: Remove Tailscale when no longer required
+  ansible.builtin.apt:
+    name: tailscale
+    state: absent
+    purge: false
+  become: true
+  when: tailscale_package_state == 'absent'

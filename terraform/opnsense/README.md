@@ -31,6 +31,10 @@ The screenshots confirm Dnsmasq serves LAN with IPv4 pool
 192.168.2.6–192.168.2.254 and a separate IPv6 SLAAC entry. Unbound also runs;
 Kea and ISC DHCP are not listed. Preserve the existing LAN DHCP and IPv6 settings.
 
+The Canon iX6820 has an existing Dnsmasq reservation outside Terraform:
+192.168.2.162, MAC dc:c2:c9:c7:48:67, hostname `printer`. Do not create a
+second host for it.
+
 ## API credentials
 
 Create a dedicated local automation user in OPNsense under System > Access >
@@ -160,6 +164,9 @@ Dnsmasq pools/options remain in Ansible; do not manage the same host from both.
 | Fosi ZD3 IR | fosi-zd3-ir | e8:6b:ea:23:7e:14 | 192.168.20.54 |
 | Living room | living-room | dc:4f:22:3d:71:09 | 192.168.20.55 |
 | Oficina | oficina | 44:1b:f6:d4:52:c0 | 192.168.20.56 |
+| Shelly Gas | shelly-gas | 7c:87:ce:bc:f1:66 | 192.168.20.57 |
+| Shelly smoke detector alarm | shelly-smoke-alarm | cc:7b:5c:0d:14:2c | 192.168.20.58 |
+| Boiler | boiler | 98:f4:ab:b2:60:04 | 192.168.20.59 |
 
 The black light retains its existing address.
 Dnsmasq supports reservations inside its dynamic pool; `.179` stays reserved for
@@ -178,6 +185,13 @@ This is only the new field to merge into the existing Wi-Fi settings, not a full
 replacement of a shared inherited Wi-Fi block. A reservation does not forward
 mDNS across VLANs, and creating a Dnsmasq host does not automatically create an
 AdGuard DNS rewrite. Continue using the IP until ordinary DNS is configured.
+
+### Shelly Gas migration
+
+`shelly_gas.tf` permits the reserved gas sensor address to send CoIoT updates
+to Home Assistant at 192.168.2.91 UDP 5683. Configure the device's CoIoT peer
+to `192.168.2.91:5683` and restart it after the change. Verify the Home Assistant
+integration and gas sensor entities after migration.
 
 ### Custom alarm panel migration
 

@@ -12,7 +12,8 @@ Known working baseline:
 | Controller | UniFi OS Server on Beelink, 192.168.2.151 |
 | Admin URL | https://unifi-admin.home.arpa |
 | Network application | 10.6.109 |
-| Existing Home SSID | GREATWHITE |
+| Previous Home SSID | GREATWHITE (disabled; retained for rollback) |
+| New Home SSID | GREATWHITE-HAUS (same untagged Home network) |
 | Home Assistant | 192.168.2.91 |
 | Devices | Two USW Flex 2.5G 5 switches and two U7 Lite APs |
 | OPNsense | 26.7.8_2 |

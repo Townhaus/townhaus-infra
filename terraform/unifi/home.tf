@@ -6,7 +6,7 @@ resource "unifi_wlan" "home" {
   security      = "wpapsk"
   network_id    = "5d8fd4c09cd9a20667736257"
   user_group_id = "5d8fd4c09cd9a20667736258"
-  enabled       = true
+  enabled       = false
 
   wpa = {
     mode = "wpa2"

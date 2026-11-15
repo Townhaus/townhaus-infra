@@ -1,5 +1,7 @@
 ---
 aswitch_app_dir: "{{ remote_home }}/aswitch"
+pi_wifi_connection_name: GREATWHITE-HAUS
+tailscale_package_state: absent
 recording_archive_enabled: true
 recording_archive_destination: "{{ recording_archive_root }}/recordings/vinyl/pi-cam"
 
