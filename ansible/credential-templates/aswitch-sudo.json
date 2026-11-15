@@ -1,0 +1,24 @@
+{
+  "title": "Aswitch Sudo",
+  "category": "LOGIN",
+  "fields": [
+    {
+      "id": "username",
+      "type": "STRING",
+      "purpose": "USERNAME",
+      "value": "saegey"
+    },
+    {
+      "id": "password",
+      "type": "CONCEALED",
+      "purpose": "PASSWORD",
+      "value": "REPLACE_WITH_EXISTING_SUDO_PASSWORD"
+    },
+    {
+      "id": "notesPlain",
+      "type": "STRING",
+      "purpose": "NOTES",
+      "value": "Replace the password field with the existing saegey sudo/login password for aswitch. This item does not change the server password."
+    }
+  ]
+}

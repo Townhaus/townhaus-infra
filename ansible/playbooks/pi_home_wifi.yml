@@ -33,7 +33,7 @@
         dest: "{{ wifi_profile_path }}"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
         content: |
           [connection]
           id=GREATWHITE-HAUS
