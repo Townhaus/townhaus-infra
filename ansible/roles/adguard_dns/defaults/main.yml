@@ -1,0 +1,23 @@
+---
+# Upstream and cache settings applied through AdGuard's /control/dns_config API.
+# These used to live only in AdGuardHome.yaml inside the Docker volume. Only
+# the keys listed here are sent; anything else in the AdGuard config is left
+# alone. See docs/adguard-dns.md for the reasoning.
+adguard_dns_settings:
+  # Encrypted upstreams over TCP. Plain UDP to 1.1.1.1/1.0.0.1 timed out for
+  # 20 s at a time during brief WAN stalls (2026-11-15).
+  upstream_dns:
+    - https://dns.cloudflare.com/dns-query
+    - https://dns.quad9.net/dns-query
+  # Query all upstreams at once and use the first answer, so one stalled
+  # upstream doesn't hold up the lookup.
+  upstream_mode: parallel
+  # Used only when every upstream fails.
+  fallback_dns:
+    - 9.9.9.9
+    - 1.1.1.1
+  # Serve expired cache entries when the upstreams don't answer.
+  cache_optimistic: true
+  # Off: the limit is per /24, so every LAN client (HA included) shared one
+  # 20 queries/s budget and excess queries were dropped silently.
+  ratelimit: 0
