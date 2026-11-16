@@ -23,6 +23,7 @@ dependencies:
 
 # Validate every Ansible playbook without contacting a host.
 syntax-check:
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/ups.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-groovenet.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml

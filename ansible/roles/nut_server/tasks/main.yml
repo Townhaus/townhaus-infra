@@ -1,0 +1,155 @@
+---
+- name: Validate UPS server settings
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Debian'
+      - ansible_facts['distribution_major_version'] | int >= 13
+      - ansible_facts['service_mgr'] == 'systemd'
+      - nut_server_ups_name is match('^[a-zA-Z0-9_-]+$')
+      - nut_server_listen_address in ansible_facts['all_ipv4_addresses']
+      - nut_server_port | int > 0
+      - nut_server_port | int <= 65535
+    fail_msg: This role requires Debian 13+ with systemd and a configured LAN listen address.
+
+- name: Install NUT server and diagnostic client
+  ansible.builtin.apt:
+    name:
+      - nut-server
+      - nut-client
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Discover NUT services
+  ansible.builtin.service_facts:
+
+- name: Reload udev rules installed by NUT
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Apply USB permissions to the already connected UPS
+  ansible.builtin.command:
+    argv:
+      - udevadm
+      - trigger
+      - --action=change
+      - --subsystem-match=usb
+      - "--attr-match=idVendor={{ nut_server_vendor_id }}"
+      - "--attr-match=idProduct={{ nut_server_product_id }}"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Wait for UPS USB permission updates
+  ansible.builtin.command: udevadm settle --timeout=10
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Keep automatic shutdown monitoring disabled for telemetry-only setup
+  ansible.builtin.systemd_service:
+    name: nut-monitor.service
+    state: stopped
+    enabled: false
+    masked: true
+  when: "'nut-monitor.service' in ansible_facts['services']"
+
+- name: Configure NUT operating mode
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: /etc/nut/nut.conf
+    owner: root
+    group: nut
+    mode: "0640"
+    backup: true
+  notify:
+    - Restart NUT driver enumerator
+    - Restart NUT server
+  when: not ansible_check_mode or 'nut-server.service' in ansible_facts['services']
+
+- name: Configure USB UPS driver
+  ansible.builtin.template:
+    src: ups.conf.j2
+    dest: /etc/nut/ups.conf
+    owner: root
+    group: nut
+    mode: "0640"
+    backup: true
+  notify:
+    - Restart NUT driver enumerator
+    - Restart NUT server
+  when: not ansible_check_mode or 'nut-server.service' in ansible_facts['services']
+
+- name: Configure NUT network listeners
+  ansible.builtin.template:
+    src: upsd.conf.j2
+    dest: /etc/nut/upsd.conf
+    owner: root
+    group: nut
+    mode: "0640"
+    backup: true
+  notify: Restart NUT server
+  when: not ansible_check_mode or 'nut-server.service' in ansible_facts['services']
+
+- name: Create NUT server systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/nut-server.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Wait for host networking before binding the LAN listener at boot
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/nut-server.service.d/network.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Ansible managed
+      [Unit]
+      Wants=network-online.target
+      After=network-online.target
+  notify:
+    - Reload systemd for NUT
+    - Restart NUT server
+
+- name: Enable NUT driver enumeration at boot
+  ansible.builtin.systemd_service:
+    name: nut-driver-enumerator.service
+    enabled: true
+  when: not ansible_check_mode or 'nut-driver-enumerator.service' in ansible_facts['services']
+
+- name: Apply driver configuration before starting the server
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start NUT server
+  ansible.builtin.systemd_service:
+    name: nut-server.service
+    enabled: true
+    state: started
+  when: not ansible_check_mode or 'nut-server.service' in ansible_facts['services']
+
+- name: Apply configuration before checking telemetry
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the LAN NUT listener
+  ansible.builtin.wait_for:
+    host: "{{ nut_server_listen_address }}"
+    port: "{{ nut_server_port }}"
+    timeout: 30
+  when: not ansible_check_mode
+
+- name: Verify UPS battery and status readings through the LAN listener
+  ansible.builtin.command:
+    argv:
+      - upsc
+      - "{{ nut_server_ups_name }}@{{ nut_server_listen_address }}:{{ nut_server_port }}"
+  register: nut_server_readings
+  changed_when: false
+  until:
+    - nut_server_readings.rc == 0
+    - "'battery.charge:' in nut_server_readings.stdout"
+    - "'ups.status:' in nut_server_readings.stdout"
+  retries: 12
+  delay: 5
+  when: not ansible_check_mode

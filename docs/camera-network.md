@@ -11,7 +11,6 @@ all tagged VLANs blocked. No camera Wi-Fi SSID is configured.
 
 | Device | MAC | Reserved IP |
 | --- | --- | --- |
-| ESP32Alarm | 44:1b:f6:d3:7d:97 (Ethernet) | 192.168.40.10 |
 | Garage Sensor ESP32 | 3c:0f:02:d7:e2:ff (Ethernet) | 192.168.40.11 |
 | Nico / Oficina camera | a0:60:32:05:32:0a | 192.168.40.20 |
 | Backyard camera | a0:60:32:0a:0a:b2 | 192.168.40.21 |
@@ -26,8 +25,10 @@ fields refer to Nico. Deploy its configuration with:
 ansible-playbook ansible/playbooks/frigate.yml --limit beelink.local --ask-become-pass
 ```
 
-Home Assistant connects to ESP32Alarm at 192.168.40.10; the garage sensor uses
-192.168.40.11. The current OPNsense LAN rules allow LAN-initiated connections.
+ESP32Alarm (`44:1b:f6:d3:7d:97`, hostname `esphome-web-d37d94`) has moved to
+the main switch and no longer has a camera VLAN reservation. Its LAN address
+and Home Assistant connection need to be verified after the move. The garage
+sensor remains at 192.168.40.11. The current OPNsense LAN rules allow LAN-initiated connections.
 Camera-interface rules allow DHCP and block other initiated IPv4 and IPv6
 traffic, including internet, DNS and NTP. Stateful replies to permitted
 LAN-initiated connections are allowed. The firewall does not isolate devices
@@ -84,6 +85,6 @@ If DHCP requests appear on `vlan03` but Dnsmasq reports that it has no address,
 check the **live** interface address, not just the saved assignment. During the
 initial cutover, saving and applying Interfaces > Cameras activated
 192.168.40.1/24 and DHCP began working. Preserve a backup and a rollback path
-before changing the switch port; moving it affects all five devices at once.
+before changing the switch port; moving it affects all devices attached to the PoE switch at once.
 If rolling back, coordinate the old port network, OPNsense reservations,
 1Password stream URLs, Frigate deployment, and Home Assistant addresses.

@@ -1,0 +1,8 @@
+---
+- name: Configure Beelink USB UPS telemetry for Home Assistant
+  hosts: townhaus_caddy
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: nut_server

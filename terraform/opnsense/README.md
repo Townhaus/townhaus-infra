@@ -35,6 +35,11 @@ The Canon iX6820 has an existing Dnsmasq reservation outside Terraform:
 192.168.2.162, MAC dc:c2:c9:c7:48:67, hostname `printer`. Do not create a
 second host for it.
 
+The Sony Bravia TV has a Terraform-managed LAN reservation in `sony_tv.tf`:
+`192.168.2.7`, MAC `52:e0:35:34:b8:2b`, hostname `sony-tv`. This preserves the
+address used by Home Assistant's Bravia integration. Keep the TV configured
+for DHCP; reconnect its network after applying to obtain the reserved address.
+
 ## API credentials
 
 Create a dedicated local automation user in OPNsense under System > Access >
