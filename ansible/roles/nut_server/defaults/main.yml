@@ -1,0 +1,8 @@
+---
+nut_server_ups_name: myups
+nut_server_driver: usbhid-ups
+nut_server_vendor_id: "0764"
+nut_server_product_id: "0501"
+nut_server_description: CyberPower UPS
+nut_server_listen_address: "192.168.2.151"
+nut_server_port: 3493

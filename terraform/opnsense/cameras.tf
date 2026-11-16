@@ -48,11 +48,6 @@ resource "opnsense_interfaces_vlan" "cameras" {
 
 locals {
   camera_reservations = {
-    alarm = {
-      hostname = "esphome-web-d37d94"
-      ip       = "192.168.40.10"
-      mac      = "44:1b:f6:d3:7d:97"
-    }
     garage = {
       hostname = "garage-sensor-esp32"
       ip       = "192.168.40.11"

@@ -69,6 +69,7 @@ jobs:
 
       - name: Run Ansible syntax checks
         run: |
+          ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/ups.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-groovenet.yml
           ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml

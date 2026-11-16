@@ -22,6 +22,10 @@ ansible-playbook ansible/deploy-vinyl-live.yml --limit townhaus_caddy \
 The aswitch monitor is an ICMP Ping check for `192.168.2.170`. It should not
 monitor the retired CamillaGUI port.
 
+## UPS monitoring
+
+For the Beelink USB UPS and Home Assistant battery sensors, see [UPS setup](ups.md).
+
 ## Immich backups
 
 ```bash
