@@ -159,7 +159,7 @@ translates AirPlay volume changes into relative preamp IR commands; see
 │       ├── frigate/            # Frigate config template + 1Password secrets
 │       ├── beszel_hub/         # smartmontools for SMART monitoring
 │       ├── beszel_agent/       # Beszel agent binary + service + Hub SSH key
-│       └── adguard_dns/        # declarative DNS rewrites via AdGuard API
+│       └── adguard_dns/        # DNS rewrites + upstream/cache settings via AdGuard API
 ├── camilladsp/
 │   └── configs/                # reference EQ presets (scp'd from aswitch)
 ├── services/

@@ -69,3 +69,34 @@
     (adguard_dns_rewrites_result.json | selectattr('domain', 'equalto', item.domain) | list | first).answer != (item.answer | default(adguard_dns_answer))
   loop_control:
     label: "{{ item.domain }}"
+
+- name: Fetch current DNS settings
+  ansible.builtin.uri:
+    url: "http://localhost:{{ adguard_admin_port }}/control/dns_info"
+    method: GET
+    url_username: "{{ adguard_dns_user }}"
+    url_password: "{{ adguard_dns_pass }}"
+    force_basic_auth: true
+    return_content: true
+  register: adguard_dns_info_result
+
+- name: Apply DNS upstream and cache settings
+  # dns_config takes a partial object: keys not sent are left unchanged.
+  # AdGuard applies it live, so no container restart is needed. Only sent when
+  # one of the managed keys differs from what AdGuard reports.
+  ansible.builtin.uri:
+    url: "http://localhost:{{ adguard_admin_port }}/control/dns_config"
+    method: POST
+    url_username: "{{ adguard_dns_user }}"
+    url_password: "{{ adguard_dns_pass }}"
+    force_basic_auth: true
+    body_format: json
+    body: "{{ adguard_dns_settings }}"
+    status_code: 200
+  vars:
+    adguard_dns_current: >-
+      {{ adguard_dns_info_result.json | dict2items
+         | selectattr('key', 'in', adguard_dns_settings.keys() | list)
+         | items2dict }}
+  when: adguard_dns_current != adguard_dns_settings
+  changed_when: true
