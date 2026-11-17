@@ -1,0 +1,12 @@
+---
+# Appended to the inventory's monitors so existing local vars need no edits.
+# Kuma shares the root stack's default Docker network with both services.
+uptime_kuma_voice_monitors:
+  - name: Wyoming Whisper
+    type: port
+    hostname: wyoming-whisper
+    port: 10300
+  - name: Wyoming Piper
+    type: port
+    hostname: wyoming-piper
+    port: 10200

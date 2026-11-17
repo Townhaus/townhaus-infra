@@ -26,6 +26,8 @@ Native firewall monitoring is an opt-in, separate playbook: see
 | AdGuard Home | `https://adguard` | DNS server and ad blocker |
 | Immich | `https://immich` | Photo library |
 | Frigate | `https://frigate` | NVR / camera |
+| Wyoming Whisper | `beelink.local:10300` (TCP) | Local speech-to-text for Home Assistant |
+| Wyoming Piper | `beelink.local:10200` (TCP) | Local text-to-speech for Home Assistant |
 | Groovenet | `https://groovenet` | Music streaming |
 | Home Assistant | `https://ha` | Home automation |
 | Scrypted | `https://scrypted` | Camera management |
@@ -312,6 +314,8 @@ available when only the Compose stack or host roles need to change.
 - [GrooveNET](docs/groovenet.md) — pinned image deployments and vinyl ingest
   verification.
 - [Operations](docs/operations.md) — Uptime Kuma, backups, and Dependabot.
+- [Home Assistant voice](docs/voice.md) — Wyoming Whisper and Piper models,
+  deployment, connection settings, and troubleshooting.
 
 For Beelink, deploy the Caddy stack through Ansible. The playbook renders the
 remote `.env` from `ansible/group_vars/townhaus_caddy/main.yml` and should
