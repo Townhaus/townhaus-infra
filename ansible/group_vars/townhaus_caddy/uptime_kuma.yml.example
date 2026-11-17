@@ -23,6 +23,8 @@ uptime_kuma_status_page:
         - name: Groovenet
         - name: Groovenet backup
         - name: Home Assistant
+        - name: Wyoming Whisper
+        - name: Wyoming Piper
     - name: Audio
       weight: 2
       monitorList:
@@ -41,6 +43,8 @@ uptime_kuma_monitors_absent:
 # Monitors — URLs are checked from within the Uptime Kuma container.
 # Use Docker service names for co-located containers on shared Docker networks,
 # LAN IPs for everything else.
+# Wyoming TCP monitors are appended by the role via uptime_kuma_voice_monitors.
+# Override that variable to change them (or set it to [] to opt out).
 uptime_kuma_monitors:
   - name: Immich
     url: http://immich-server:2283

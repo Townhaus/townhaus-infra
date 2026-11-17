@@ -69,13 +69,14 @@
     type: "{{ item.type | default('http') }}"
     url: "{{ item.url | default(omit) }}"
     hostname: "{{ item.hostname | default(omit) }}"
+    port: "{{ item.port | default(omit) }}"
     interval: "{{ item.interval | default(60) }}"
     keyword: "{{ item.keyword | default(omit) }}"
     jsonPath: "{{ item.json_path | default(omit) }}"
     expectedValue: "{{ item.expected_value | default(omit) }}"
     state: present
   delegate_to: localhost
-  loop: "{{ uptime_kuma_monitors }}"
+  loop: "{{ uptime_kuma_monitors + uptime_kuma_voice_monitors }}"
   loop_control:
     label: "{{ item.name }}"
   no_log: true

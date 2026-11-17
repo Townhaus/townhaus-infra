@@ -143,6 +143,45 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  wyoming-whisper:
+    image: rhasspy/wyoming-whisper:3.8.1@sha256:ba6fcb6056ebe237d15a325381763a80af2fc8fcedaa04f6a714a7375eb20d80
+    container_name: wyoming-whisper
+    restart: unless-stopped
+    mem_limit: 2g
+    # Use base-int8 as the faster fallback if small-int8 is too slow.
+    command: --model small-int8 --language en --beam-size 1 --device cpu --compute-type int8 --cpu-threads 4
+    ports:
+      - "10300:10300/tcp"
+    volumes:
+      - /srv/storage/wyoming/whisper:/data
+    # Inherit the image's Wyoming Describe/Info healthcheck (5m startup grace).
+    healthcheck:
+      disable: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wyoming-piper:
+    image: rhasspy/wyoming-piper:2.5.3@sha256:0f4598a8f8a984275f67c066d7cd96d26ef2601947d0372b8f32c82ae18fb7cd
+    container_name: wyoming-piper
+    restart: unless-stopped
+    mem_limit: 512m
+    command: --voice en_US-lessac-medium
+    ports:
+      - "10200:10200/tcp"
+    volumes:
+      - /srv/storage/wyoming/piper:/data
+    # Inherit the image's Wyoming Describe/Info healthcheck (5m startup grace).
+    healthcheck:
+      disable: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   immich-server:
     image: ghcr.io/immich-app/immich-server:v3.3.6@sha256:e1981983b1c13f6024b57d72e7ecae3342eed1581201ab09fb248932d86c593a
     container_name: immich_server

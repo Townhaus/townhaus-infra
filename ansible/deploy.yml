@@ -130,6 +130,18 @@
         state: directory
         mode: "0700"
 
+    - name: Ensure Wyoming model directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ townhaus_caddy_owner }}"
+        group: "{{ townhaus_caddy_group }}"
+        mode: "0755"
+      loop:
+        - /srv/storage/wyoming/whisper
+        - /srv/storage/wyoming/piper
+      become: true
+
     - name: Copy stack files
       ansible.builtin.copy:
         src: "{{ item.src }}"
