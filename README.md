@@ -212,6 +212,22 @@ cp ansible/group_vars/townhaus_caddy/beszel.yml.example ansible/group_vars/townh
 | `Archive SMB` | `password` |
 | `Home Assistant Codex Token` | `token` |
 
+### Worktrees
+
+The inventory, group vars, `.env` and Terraform state above are gitignored, so
+a fresh `git worktree` has none of them and playbooks fail there. They're
+listed in `.worktreeinclude`:
+
+```bash
+just worktree feat/my-change   # new worktree at ../townhaus-caddy-feat-my-change, config linked
+just link-local-config         # run inside a worktree made by Herdr, ChatGPT/Codex or git
+```
+
+Files are symlinked from the main checkout, so secrets aren't duplicated and
+Terraform state stays in one place. Claude Code copies the same files into its
+own worktrees automatically. Add new local-only files to `.worktreeinclude`
+as well as `.gitignore`.
+
 ## Archive file share
 
 The Ansible-managed Samba service exports `/srv/storage/archive` as the

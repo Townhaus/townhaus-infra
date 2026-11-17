@@ -11,6 +11,26 @@ default:
 herdr:
     python3 scripts/herdr-setup.py
 
+# Create a worktree for a branch (new ones start from origin/main), local config linked in.
+worktree branch path="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    path="{{path}}"
+    [[ -n "$path" ]] || path="../townhaus-caddy-$(echo '{{branch}}' | tr '/' '-')"
+    git fetch -q origin
+    if git show-ref -q --verify "refs/heads/{{branch}}"; then
+      git worktree add "$path" "{{branch}}"
+    elif git show-ref -q --verify "refs/remotes/origin/{{branch}}"; then
+      git worktree add --track -b "{{branch}}" "$path" "origin/{{branch}}"
+    else
+      git worktree add -b "{{branch}}" "$path" origin/main
+    fi
+    scripts/worktree-local-config.sh "$path"
+
+# Symlink local-only config (.worktreeinclude) into the worktree you run it from.
+link-local-config:
+    scripts/worktree-local-config.sh "{{invocation_directory()}}"
+
 # Install Python packages required by Ansible collections (uses mise Python from host_vars/localhost.yml).
 pip-deps:
     mise which python3 | xargs -I{} sh -c '"$1" -m pip uninstall -y uptime-kuma-api' sh {} || true

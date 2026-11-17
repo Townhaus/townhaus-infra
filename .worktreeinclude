@@ -1,0 +1,26 @@
+# Local-only files (gitignored: inventories, secrets, Terraform state) that a
+# new worktree needs before playbooks or Terraform can run. Gitignore syntax.
+#
+# Claude Code copies matches into the worktrees it creates. For any other
+# worktree (Herdr, ChatGPT/Codex, plain `git worktree add`), run
+# `just link-local-config` inside it: that symlinks the same files from the
+# main checkout, so there is still one real copy of each secret.
+.env
+certs/
+ansible/inventory.ini
+ansible/inventory.opnsense.ini
+ansible/group_vars/townhaus_caddy.yml
+ansible/group_vars/townhaus_caddy/main.yml
+ansible/group_vars/townhaus_caddy/beszel.yml
+ansible/group_vars/townhaus_caddy/frigate.yml
+ansible/group_vars/townhaus_caddy/immich_backup.yml
+ansible/group_vars/townhaus_caddy/uptime_kuma.yml
+ansible/group_vars/aswitch_secrets.yml
+ansible/group_vars/pi_cam_secrets.yml
+ansible/host_vars/localhost.yml
+ansible/host_vars/opnsense_firewall.yml
+services/aswitch/env/*.env
+!services/aswitch/env/*.example.env
+terraform/*/*.tfvars
+terraform/*/terraform.tfstate
+terraform/*/terraform.tfstate.backup
