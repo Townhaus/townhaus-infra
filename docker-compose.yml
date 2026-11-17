@@ -154,9 +154,14 @@ services:
       - "10300:10300/tcp"
     volumes:
       - /srv/storage/wyoming/whisper:/data
-    # Inherit the image's Wyoming Describe/Info healthcheck (5m startup grace).
+    # The image defines no healthcheck. Check that the Wyoming port accepts
+    # connections; the start period covers the first model download.
     healthcheck:
-      disable: false
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10300"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
     logging:
       driver: json-file
       options:
@@ -173,9 +178,14 @@ services:
       - "10200:10200/tcp"
     volumes:
       - /srv/storage/wyoming/piper:/data
-    # Inherit the image's Wyoming Describe/Info healthcheck (5m startup grace).
+    # The image defines no healthcheck. Check that the Wyoming port accepts
+    # connections; the start period covers the first model download.
     healthcheck:
-      disable: false
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
     logging:
       driver: json-file
       options:

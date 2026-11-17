@@ -57,8 +57,8 @@ playbook or host-role deployment is needed.
 
 The Kuma role appends **Wyoming Whisper** and **Wyoming Piper** TCP monitors to
 the existing inventory monitors, using Docker service names on the shared
-network. They test TCP availability, while each container's built-in healthcheck
-tests a Wyoming Describe/Info round trip. Existing local vars need no edits.
+network. They test TCP availability, as does each container's Compose
+healthcheck (the images define none of their own). Existing local vars need no edits.
 Optionally add those names to the local status page's Beelink `monitorList`
 to display them there; the tracked vars example shows this. To customize or
 disable the appended monitors, override `uptime_kuma_voice_monitors` in your
@@ -107,8 +107,8 @@ docker stats --no-stream wyoming-whisper wyoming-piper
 
 First startup needs internet access and disk space to download the model and
 voice. The listeners may not open until downloads and model loading finish.
-Both images supply a Wyoming protocol healthcheck every 30 seconds, with a
-20-second timeout, three retries and a five-minute startup grace period. A slow
+Each service's Compose healthcheck opens its Wyoming port every 30 seconds,
+with a 10-second timeout, three retries and a five-minute startup grace period. A slow
 first download can outlast that grace; watch the logs before diagnosing a
 failure. Docker health status alone does not restart an unhealthy container.
 
