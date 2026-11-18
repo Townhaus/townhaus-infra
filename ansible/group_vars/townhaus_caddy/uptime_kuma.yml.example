@@ -77,9 +77,9 @@ uptime_kuma_monitors:
     url: http://192.168.1.x:8123
   - name: aswitch
     type: ping
-    hostname: 192.168.2.170
+    hostname: aswitch.host.home.arpa
   - name: pi-cam
-    url: http://192.168.2.171:5005/gui/index.html
+    url: http://pi-cam.host.home.arpa:5005/gui/index.html
   - name: Vinyl Live
     # Checks the public listener's health endpoint, which proxies to the
     # controller and fails if the audio service is unavailable.

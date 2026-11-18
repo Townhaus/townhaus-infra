@@ -1,0 +1,56 @@
+---
+- name: Resolve Beszel login from 1Password
+  ansible.builtin.command:
+    argv: [op, read, "{{ item }}"]
+  loop:
+    - "{{ beszel_hub_user_ref }}"
+    - "{{ beszel_hub_password_ref }}"
+  delegate_to: localhost
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  register: beszel_hub_credentials
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: Authenticate to the existing Beszel user account
+  ansible.builtin.uri:
+    url: "{{ beszel_hub_api_url }}/api/collections/users/auth-with-password"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ beszel_hub_credentials.results[0].stdout | trim }}"
+      password: "{{ beszel_hub_credentials.results[1].stdout }}"
+    return_content: true
+  register: beszel_hub_auth
+  check_mode: false
+  no_log: true
+
+- name: Read existing Beszel systems
+  ansible.builtin.uri:
+    url: "{{ beszel_hub_api_url }}/api/collections/systems/records?perPage=500"
+    headers:
+      Authorization: "{{ beszel_hub_auth.json.token }}"
+    return_content: true
+  register: beszel_hub_current_systems
+  check_mode: false
+  no_log: true
+
+- name: Require complete and unambiguous existing system records
+  ansible.builtin.assert:
+    that:
+      - beszel_hub_current_systems.json.totalPages | int <= 1
+      - >-
+        beszel_hub_current_systems.json['items']
+        | selectattr('name', 'equalto', item.name) | list | length == 1
+    fail_msg: "Expected exactly one accessible Beszel system named {{ item.name }}."
+  loop: "{{ beszel_hub_systems }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Reconcile each existing system address
+  ansible.builtin.include_tasks: system.yml
+  loop: "{{ beszel_hub_systems }}"
+  loop_control:
+    loop_var: beszel_hub_desired_system
+    label: "{{ beszel_hub_desired_system.name }}"

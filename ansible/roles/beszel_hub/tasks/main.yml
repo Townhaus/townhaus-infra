@@ -5,3 +5,7 @@
     state: present
     update_cache: true
   become: true
+
+- name: Configure existing Beszel system addresses
+  ansible.builtin.import_tasks: systems.yml
+  when: beszel_hub_systems | length > 0

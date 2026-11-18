@@ -46,12 +46,13 @@ adguard_dns_rewrites:
   - domain: pvr.home.arpa
   - domain: now-playing.home.arpa
   - domain: aswitch
-    answer: "192.168.2.170"
   - domain: aswitch.home.arpa
-    answer: "192.168.2.170"
   - domain: pi-cam
-    answer: "192.168.2.171"
   - domain: pi-cam.home.arpa
+  # Direct host records for SSH, Ansible, and monitoring.
+  - domain: aswitch.host.home.arpa
+    answer: "192.168.2.176"
+  - domain: pi-cam.host.home.arpa
     answer: "192.168.2.171"
   - domain: herdr
   - domain: herdr.home.arpa

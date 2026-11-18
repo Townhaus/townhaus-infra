@@ -1,0 +1,47 @@
+---
+- name: Read Ethernet management addresses
+  ansible.builtin.command:
+    argv: [ip, -j, -4, address, show, dev, "{{ pi_wifi_ethernet_interface }}"]
+  register: pi_wifi_ethernet_addresses
+  changed_when: false
+  check_mode: false
+
+- name: Read the address used by the SSH connection
+  ansible.builtin.command:
+    argv: [printenv, SSH_CONNECTION]
+  register: pi_wifi_ssh_connection
+  changed_when: false
+  check_mode: false
+
+- name: Require the management connection to use active Ethernet
+  ansible.builtin.assert:
+    that:
+      - pi_wifi_ethernet_addresses.stdout | from_json | length == 1
+      - "'LOWER_UP' in (pi_wifi_ethernet_addresses.stdout | from_json | first).flags"
+      - >-
+        pi_wifi_ssh_connection.stdout.split()[2] in
+        ((pi_wifi_ethernet_addresses.stdout | from_json | first).addr_info
+        | map(attribute='local') | list)
+    fail_msg: Connect Ansible to the active Ethernet IPv4 address before disabling Wi-Fi.
+
+- name: Read the NetworkManager Wi-Fi radio state
+  ansible.builtin.command:
+    argv: [nmcli, radio, wifi]
+  register: pi_wifi_radio_state
+  changed_when: false
+  check_mode: false
+
+- name: Persistently disable the Wi-Fi radio
+  ansible.builtin.command:
+    argv: [nmcli, radio, wifi, "off"]
+  when: pi_wifi_radio_state.stdout | trim == 'enabled'
+  changed_when: true
+  become: true
+
+- name: Verify the Wi-Fi radio is disabled
+  ansible.builtin.command:
+    argv: [nmcli, radio, wifi]
+  register: pi_wifi_radio_status
+  changed_when: false
+  failed_when: pi_wifi_radio_status.stdout | trim != 'disabled'
+  when: not ansible_check_mode

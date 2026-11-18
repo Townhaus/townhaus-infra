@@ -31,7 +31,7 @@ aswitch deployment.
 | AirPlay routing, level, or metadata bridge | `just deploy-aswitch-airplay` | AirPlay 2 Shairport and its MPRIS-to-MQTT bridge |
 | Vinyl ingest/client settings | `just deploy-aswitch-ingest` | `audio_activity` |
 | Recording archive workflow | `just deploy-aswitch-recordings` | `audio_activity` when code changes; archive timer |
-| Wi-Fi power saving | `just deploy-aswitch-wifi` | None; applies without reconnecting |
+| Wi-Fi policy | `just deploy-aswitch-wifi` | Disables Wi-Fi after verifying the Ethernet management address |
 
 The Shairport output is pinned to 44.1 kHz and `S16_LE`, with `auto`
 interpolation. Home Assistant translates AirPlay volume changes into relative
@@ -46,16 +46,25 @@ on aswitch and publishes track metadata and binary cover art under the existing
 `aswitch/shairport/{title,artist,album,genre,cover}` topics. Shairport's own MQTT
 client continues to publish playback events and status.
 
-The `pi_wifi` role disables power saving on the existing
-`GREATWHITE-HAUS` NetworkManager connection and on the active `wlan0`
-interface. Both the full deployment and `just deploy-aswitch-wifi` apply it
-without reconnecting Wi-Fi. Verify the active setting with:
+aswitch uses Ethernet at `aswitch.host.home.arpa` (`192.168.2.176`) through the
+Wi-Fi extender's Ethernet port. The wired NetworkManager connection starts automatically. Keep this DHCP
+address reserved for aswitch's Ethernet interface when managing router leases.
+
+`pi_wifi_enabled: false` in `ansible/group_vars/aswitch.yml` makes the `pi_wifi`
+role persistently disable the Wi-Fi radio through NetworkManager. The role first
+requires an active Ethernet link and an Ansible management address assigned to
+that interface. The full deployment and `just deploy-aswitch-wifi` apply this
+policy. The saved Wi-Fi connection is retained.
+
+Verify the network state with:
 
 ```bash
-ssh aswitch.local '/usr/sbin/iw dev wlan0 get power_save'
+ssh saegey@aswitch.host.home.arpa 'ip -br addr; ip route; nmcli radio wifi'
 ```
 
-The expected result is `Power save: off`.
+The expected radio state is `disabled`, with the default route on `eth0`.
+To restore Wi-Fi deliberately, run `sudo nmcli radio wifi on` over Ethernet
+or from a local console, set `pi_wifi_enabled: true`, and redeploy the policy.
 
 ## Retrieving vinyl recordings
 

@@ -2,10 +2,10 @@
 beelink ansible_host=192.168.2.151 ansible_user=saegey
 
 [aswitch]
-aswitch_host ansible_host=aswitch.local ansible_user=saegey
+aswitch_host ansible_host=aswitch.host.home.arpa ansible_user=saegey
 
 [pi_cam]
-pi_cam_host ansible_host=pi-cam.local ansible_user=saegey
+pi_cam_host ansible_host=pi-cam.host.home.arpa ansible_user=saegey
 
 [pis:children]
 aswitch

@@ -1,7 +1,7 @@
 ---
 # Declarative DNS rewrites for AdGuard Home.
 # Add entries to adguard_dns_rewrites in group_vars/townhaus_caddy/ to manage them here.
-# All entries point to beelink so Caddy handles the reverse proxy.
+# Entries default to beelink for Caddy; explicit answers address LAN hosts directly.
 
 - name: Resolve AdGuard credentials from 1Password
   ansible.builtin.command:

@@ -49,6 +49,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-vinyl-live.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beszel_systems.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_ingest.yml
@@ -152,6 +153,10 @@ update-beszel-agents *args:
 upgrade-beelink-trixie:
     ansible-playbook ansible/playbooks/upgrade_beelink_trixie.yml --ask-become-pass
 
+# Reconcile the saved Beszel system addresses without restarting agents or the hub.
+configure-beszel-systems:
+    ansible-playbook ansible/playbooks/beszel_systems.yml
+
 # Apply only the Uptime Kuma monitor and status-page configuration.
 configure-uptime-kuma:
     ansible-playbook ansible/playbooks/uptime_kuma.yml
@@ -165,7 +170,7 @@ deploy-beelink:
 deploy-aswitch:
     ansible-playbook ansible/playbooks/aswitch.yml --ask-become-pass
 
-# Disable aswitch Wi-Fi power saving immediately and persistently.
+# Apply aswitch's Wi-Fi policy (disabled while using Ethernet).
 deploy-aswitch-wifi:
     ansible-playbook ansible/playbooks/aswitch_wifi.yml --ask-become-pass
 

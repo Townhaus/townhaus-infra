@@ -1,0 +1,10 @@
+---
+- name: Configure existing Beszel system addresses
+  hosts: townhaus_caddy
+  gather_facts: false
+
+  tasks:
+    - name: Reconcile existing system addresses through the Beszel API
+      ansible.builtin.import_role:
+        name: beszel_hub
+        tasks_from: systems
