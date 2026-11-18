@@ -1,5 +1,6 @@
 """Continuous, spool-backed audio capture for the Groovenet ingest endpoint."""
 
+import json
 import logging
 import os
 import re
@@ -20,11 +21,57 @@ CHUNK_SECONDS = int(os.environ.get("GROOVENET_CHUNK_SECONDS", "15"))
 HTTP_TIMEOUT_SECONDS = float(os.environ.get("GROOVENET_HTTP_TIMEOUT_SECONDS", "30"))
 RETRY_MIN_SECONDS = float(os.environ.get("GROOVENET_RETRY_MIN_SECONDS", "2"))
 RETRY_MAX_SECONDS = float(os.environ.get("GROOVENET_RETRY_MAX_SECONDS", "300"))
+MAX_UNRECOGNIZED_ATTEMPTS = int(os.environ.get("GROOVENET_MAX_UNRECOGNIZED_ATTEMPTS", "10"))
 WAV_SAMPLE_WIDTH_BYTES = 2
+
+# Groovenet's ingest contract (groovenet#1227): these codes mean the chunk itself
+# is bad and will never be accepted, so it is safe to delete. Everything else,
+# including 408 upload_incomplete, is retried.
+PERMANENT_REJECTIONS = {
+    400: frozenset(
+        {
+            "missing_audio_file",
+            "missing_source_id",
+            "unsupported_audio_format",
+            "invalid_audio_stream",
+            "audio_too_short",
+            "audio_too_long",
+        }
+    ),
+    413: frozenset({"audio_too_large"}),
+}
+
+ACCEPTED = "accepted"
+DISCARD = "discard"
+RETRY = "retry"
+UNRECOGNIZED = "unrecognized"
 
 CHUNK_NAME = re.compile(
     r"^(?P<captured_at>\d{8}T\d{12}Z)_(?P<session_id>[0-9a-f-]{36})_(?P<sequence>\d+)\.wav$"
 )
+
+
+def error_code(body):
+    """The `error` field of a JSON error body, or None when there isn't one."""
+    try:
+        payload = json.loads(body)
+    except (TypeError, ValueError):
+        return None
+    code = payload.get("error") if isinstance(payload, dict) else None
+    return code if isinstance(code, str) else None
+
+
+def classify_response(status, body):
+    """Decide what to do with a chunk after the server answered `status`."""
+    if 200 <= status < 300:
+        return ACCEPTED
+    if error_code(body) in PERMANENT_REJECTIONS.get(status, ()):
+        return DISCARD
+    if 400 <= status < 500 and status not in (408, 429):
+        # A client error the contract doesn't name: an unknown code, a body that
+        # isn't JSON (a proxy's error page), or a known code on the wrong status.
+        return UNRECOGNIZED
+    return RETRY
 
 
 class GroovenetIngest:
@@ -48,6 +95,7 @@ class GroovenetIngest:
         self.final_path = None
         self.write_lock = threading.Lock()
         self.stop_event = threading.Event()
+        self.unrecognized_attempts = {}
         self.uploader = threading.Thread(
             target=self._upload_loop, name="groovenet-uploader", daemon=True
         )
@@ -152,12 +200,16 @@ class GroovenetIngest:
                 delay = min(delay * 2, RETRY_MAX_SECONDS)
                 continue
 
-            if 200 <= status < 300:
+            outcome = classify_response(status, body)
+            if outcome == ACCEPTED:
                 chunk.unlink(missing_ok=True)
+                self.unrecognized_attempts.pop(chunk.name, None)
                 self.logger.info("Groovenet accepted %s (status=%s)", chunk.name, status)
                 delay = RETRY_MIN_SECONDS
-            elif 400 <= status < 500:
+                continue
+            if outcome == DISCARD:
                 chunk.unlink(missing_ok=True)
+                self.unrecognized_attempts.pop(chunk.name, None)
                 self.logger.error(
                     "Discarding permanently rejected Groovenet chunk %s (status=%s body=%s)",
                     chunk.name,
@@ -165,15 +217,45 @@ class GroovenetIngest:
                     body[:500],
                 )
                 delay = RETRY_MIN_SECONDS
-            else:
-                self.logger.warning(
-                    "Groovenet server error for %s (status=%s body=%s)",
-                    chunk.name,
-                    status,
-                    body[:500],
-                )
-                self.stop_event.wait(delay)
-                delay = min(delay * 2, RETRY_MAX_SECONDS)
+                continue
+            if outcome == UNRECOGNIZED and self._give_up_on(chunk, status, body):
+                delay = RETRY_MIN_SECONDS
+                continue
+
+            self.logger.warning(
+                "Groovenet will retry %s (status=%s body=%s)",
+                chunk.name,
+                status,
+                body[:500],
+            )
+            self.stop_event.wait(delay)
+            delay = min(delay * 2, RETRY_MAX_SECONDS)
+
+    def _give_up_on(self, chunk, status, body):
+        """Count an unrecognized rejection; after too many, move the chunk aside.
+
+        Uploads go in order, so a chunk the server keeps refusing for a reason we
+        don't understand would block every later chunk. It is kept in
+        `rejected/` rather than deleted, so it can be inspected or replayed.
+        """
+        attempts = self.unrecognized_attempts.get(chunk.name, 0) + 1
+        self.unrecognized_attempts[chunk.name] = attempts
+        if attempts < MAX_UNRECOGNIZED_ATTEMPTS:
+            return False
+        rejected_dir = SPOOL_DIR / "rejected"
+        rejected_dir.mkdir(parents=True, exist_ok=True)
+        chunk.replace(rejected_dir / chunk.name)
+        self.unrecognized_attempts.pop(chunk.name, None)
+        self.logger.error(
+            "Moved Groovenet chunk %s to %s after %s unrecognized rejections "
+            "(status=%s body=%s)",
+            chunk.name,
+            rejected_dir,
+            attempts,
+            status,
+            body[:500],
+        )
+        return True
 
     def _next_chunk(self):
         for chunk in sorted(SPOOL_DIR.glob("*.wav")):
