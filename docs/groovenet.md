@@ -63,14 +63,25 @@ tests use temporary files and a fake Docker executable, without contacting a hos
 
 `audio_activity.service` on aswitch uploads 15-second mono WAV windows to
 `/api/audio/ingest` only while audio activity is present. It starts after two
-seconds of activity, keeps a 30-second inactive hold, and retries network or
-5xx failures from its local spool.
+seconds of activity and keeps a 30-second inactive hold. Windows wait in a local
+spool and upload in order, with backoff (2 s doubling to 5 min) on failure.
+
+What happens to a window depends on GrooveNET's answer (its ingest contract,
+groovenet#1227):
+
+| Response | Window |
+|---|---|
+| 2xx | Accepted; removed from the spool |
+| 400 `missing_audio_file`, `missing_source_id`, `unsupported_audio_format`, `invalid_audio_stream`, `audio_too_short`, `audio_too_long`; 413 `audio_too_large` | Bad window; deleted |
+| 408 `upload_incomplete`, 429, 5xx, a network error or timeout | Kept and retried |
+| Any other 4xx (an unknown code, or a body that isn't GrooveNET's JSON) | Retried; after `GROOVENET_MAX_UNRECOGNIZED_ATTEMPTS` (default 10) it moves to `groovenet-spool/rejected/` so later windows aren't blocked |
 
 ```bash
 ssh aswitch.local 'journalctl -u audio_activity -n 100 --no-pager'
 ssh aswitch.local 'find ~/aswitch/groovenet-spool -maxdepth 1 -type f | wc -l'
+ssh aswitch.local 'ls ~/aswitch/groovenet-spool/rejected 2>/dev/null'
 ```
 
-Successful requests are accepted by GrooveNET and removed from the spool.
 Persistent spool growth means the endpoint, TLS trust, or server response needs
-attention.
+attention. Windows in `rejected/` are kept, not deleted. Clear them by hand once
+inspected, or move them back into `groovenet-spool/` to replay them.
