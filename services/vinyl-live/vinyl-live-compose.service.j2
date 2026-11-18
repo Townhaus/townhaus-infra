@@ -10,8 +10,8 @@ RequiresMountsFor={{ vinyl_live_app_dir }}
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory={{ vinyl_live_app_dir }}
-ExecStart=/usr/bin/docker compose -p vinyl-live {% if vinyl_live_tunnel_token_ref | length > 0 %}--profile public {% endif %}up -d audio server{% if vinyl_live_tunnel_token_ref | length > 0 %} tunnel{% endif %}
-ExecStop=/usr/bin/docker compose -p vinyl-live {% if vinyl_live_tunnel_token_ref | length > 0 %}--profile public {% endif %}stop audio server{% if vinyl_live_tunnel_token_ref | length > 0 %} tunnel{% endif %}
+ExecStart=/usr/bin/docker compose -p vinyl-live {{ '--profile public ' if vinyl_live_tunnel_token_ref | length > 0 else '' }}up -d audio server{{ ' tunnel' if vinyl_live_tunnel_token_ref | length > 0 else '' }}
+ExecStop=/usr/bin/docker compose -p vinyl-live {{ '--profile public ' if vinyl_live_tunnel_token_ref | length > 0 else '' }}stop audio server{{ ' tunnel' if vinyl_live_tunnel_token_ref | length > 0 else '' }}
 TimeoutStartSec=0
 
 [Install]

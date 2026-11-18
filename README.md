@@ -585,6 +585,12 @@ Frigate runs as a Docker service on beelink with `network_mode: host` (required 
 
 All credentials (MQTT password, camera RTSP URLs, HomeKit PIN) are stored in 1Password and rendered into the config at deploy time — no plaintext secrets in the repo.
 
+Sign in at `https://frigate.home.arpa` (or `https://frigate`) using the login
+saved in the `Homelab` vault's `Frigate` item. Caddy routes browser access to
+Frigate's authenticated HTTPS port `8971`; its self-signed upstream certificate
+is accepted on this local connection. Port `5000` remains the unauthenticated
+integration endpoint. Manage accounts under **Settings > Users**.
+
 ### Frigate 0.18 deployment
 
 `just deploy-beelink` deploys the pinned Frigate release from the root
