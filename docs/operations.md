@@ -19,7 +19,7 @@ ansible-playbook ansible/deploy-vinyl-live.yml --limit townhaus_caddy \
   --tags vinyl_live_boot --ask-become-pass
 ```
 
-The aswitch monitor is an ICMP Ping check for `192.168.2.170`. It should not
+The aswitch monitor is an ICMP Ping check for `aswitch.host.home.arpa`. It should not
 monitor the retired CamillaGUI port.
 
 ## UPS monitoring
@@ -49,3 +49,28 @@ updates**.
 
 Review image release notes and backup/migration requirements before merging an
 application update, especially for Immich and Frigate.
+
+## Beszel system addresses
+
+Beszel stores each agent's connection address in the hub, separately from DNS
+and Uptime Kuma. The `beszel_hub` role reconciles the existing `Aswitch` and
+`PiCam` records to their direct host DNS names. Configuration lives in
+`ansible/group_vars/townhaus_caddy/beszel_systems.yml`.
+
+The configured 1Password references select the existing `Homelab` Beszel login's
+`email` and `passwordConfirm` fields by item ID. Update `beszel_hub_user_ref`
+and `beszel_hub_password_ref` if that item changes. The role uses the
+authenticated REST API to update the host and request a reconnect, retaining
+system IDs, history, user access, agent keys, and ports.
+
+```bash
+just configure-beszel-systems
+# Preview address changes without saving them:
+ansible-playbook ansible/playbooks/beszel_systems.yml --check
+```
+
+The full Beelink configuration also reconciles these addresses after applying
+DNS rewrites. No hub or agent restart is required for an address update.
+Intentionally paused systems stay paused. To explicitly reconnect an existing
+record without changing its address, pass
+`-e '{"beszel_hub_reconnect_systems":["Aswitch"]}'` to the playbook.

@@ -1,0 +1,6 @@
+---
+beszel_hub_api_url: http://127.0.0.1:8090
+beszel_hub_user_ref: op://Homelab/Beszel/username
+beszel_hub_password_ref: op://Homelab/Beszel/password
+beszel_hub_systems: []
+beszel_hub_reconnect_systems: []

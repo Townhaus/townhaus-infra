@@ -1,0 +1,51 @@
+---
+- name: Select the existing system record
+  ansible.builtin.set_fact:
+    beszel_hub_current_system: >-
+      {{ beszel_hub_current_systems.json['items']
+      | selectattr('name', 'equalto', beszel_hub_desired_system.name) | first }}
+  no_log: true
+
+- name: Determine whether the address or connection needs updating
+  ansible.builtin.set_fact:
+    beszel_hub_update_needed: >-
+      {{ beszel_hub_current_system.host != beszel_hub_desired_system.host
+      or beszel_hub_desired_system.name in beszel_hub_reconnect_systems }}
+
+- name: Report a planned system address update
+  ansible.builtin.debug:
+    msg: "Would set {{ beszel_hub_desired_system.name }} host to {{ beszel_hub_desired_system.host }}."
+  changed_when: true
+  when:
+    - ansible_check_mode
+    - beszel_hub_update_needed | bool
+
+- name: Update the saved system host and refresh its connection
+  ansible.builtin.uri:
+    url: "{{ beszel_hub_api_url }}/api/collections/systems/records/{{ beszel_hub_current_system.id }}"
+    method: PATCH
+    headers:
+      Authorization: "{{ beszel_hub_auth.json.token }}"
+    body_format: json
+    body:
+      host: "{{ beszel_hub_desired_system.host }}"
+      # Beszel reloads the connection settings on the pending transition.
+      # Preserve intentionally paused systems instead of resuming them.
+      status: "{{ 'pending' if beszel_hub_current_system.status != 'paused' else omit }}"
+    return_content: true
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - beszel_hub_update_needed | bool
+  no_log: true
+
+- name: Verify the saved system address
+  ansible.builtin.uri:
+    url: "{{ beszel_hub_api_url }}/api/collections/systems/records/{{ beszel_hub_current_system.id }}"
+    headers:
+      Authorization: "{{ beszel_hub_auth.json.token }}"
+    return_content: true
+  register: beszel_hub_verified_system
+  failed_when: beszel_hub_verified_system.json.host != beszel_hub_desired_system.host
+  when: not ansible_check_mode
+  no_log: true

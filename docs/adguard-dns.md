@@ -29,3 +29,18 @@ gateway. The settings make AdGuard ride those out instead of passing them on:
 
 Apply with the Beelink playbook (`ansible/playbooks/beelink.yml`), which runs
 the `adguard_dns` role.
+
+## Streamer host names
+
+Direct host records resolve to the Pis for SSH, Ansible, and Uptime Kuma:
+
+| Hostname | Address |
+|---|---|
+| `aswitch.host.home.arpa` | `192.168.2.176` (Ethernet) |
+| `pi-cam.host.home.arpa` | `192.168.2.171` |
+
+Connect with `ssh saegey@aswitch.host.home.arpa` or
+`ssh saegey@pi-cam.host.home.arpa` from clients using AdGuard for DNS.
+The existing `aswitch.home.arpa` and `pi-cam.home.arpa` service names still
+point at Caddy. Keep the host addresses reserved in DHCP; after an address
+change, update the direct host record rather than each monitor or SSH command.

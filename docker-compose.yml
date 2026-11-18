@@ -19,7 +19,7 @@ services:
       - caddy_config:/config
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "aswitch.local:192.168.2.170"
+      - "aswitch.local:192.168.2.176"
       - "pi-cam.local:192.168.2.171"
     healthcheck:
       test: ["CMD", "caddy", "version"]

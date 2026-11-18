@@ -1,5 +1,5 @@
 ---
-- name: Disable Wi-Fi power saving on aswitch.local
+- name: Configure Wi-Fi policy on aswitch.local
   hosts: aswitch
   gather_facts: false
 

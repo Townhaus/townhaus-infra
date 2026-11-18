@@ -1,0 +1,10 @@
+---
+beszel_hub_user_ref: op://Homelab/gmufa6ofeqplur4ncrkgmdrxmq/email
+beszel_hub_password_ref: op://Homelab/gmufa6ofeqplur4ncrkgmdrxmq/passwordConfirm
+
+# Only addresses of existing records are managed; IDs, history, users, and ports remain intact.
+beszel_hub_systems:
+  - name: Aswitch
+    host: aswitch.host.home.arpa
+  - name: PiCam
+    host: pi-cam.host.home.arpa
