@@ -64,6 +64,9 @@ cameras:
         friendly_name: Driveway
     review:
       alerts:
+        enabled: true
+        labels:
+          - person
         required_zones: driveway
       detections:
         required_zones: driveway
@@ -91,6 +94,13 @@ cameras:
       streams:
         Backyard: backyard
         Backyard Sub: backyard_sub
+    notifications:
+      enabled: true
+    review:
+      alerts:
+        enabled: true
+        labels:
+          - person
   oficina:
     enabled: true
     ffmpeg:

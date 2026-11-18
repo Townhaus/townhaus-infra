@@ -43,7 +43,12 @@ start, start.home.arpa {
 # - https://frigate.home.arpa
 frigate, frigate.home.arpa {
 	import common
-	reverse_proxy http://host.docker.internal:5000
+	# Use Frigate's authenticated UI/API; port 5000 bypasses login.
+	reverse_proxy https://host.docker.internal:8971 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
 }
 
 # Groovenet: dual endpoints for desktop/iOS compatibility:
@@ -158,7 +163,11 @@ beszel, beszel.home.arpa {
 beelink {
 	import common
 	handle_path /frigate/* {
-		reverse_proxy http://host.docker.internal:5000
+		reverse_proxy https://host.docker.internal:8971 {
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
 	}
 	handle_path /groovenet/* {
 		reverse_proxy http://{$GROOVENET_UPSTREAM_HOST:webapp}:3000
