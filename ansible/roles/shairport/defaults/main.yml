@@ -37,7 +37,9 @@ shairport_airplay2_service_name: shairport-sync-airplay2.service
 shairport_airplay2_nqptp_service_name: nqptp-airplay2.service
 shairport_metadata_pipe_name: /tmp/shairport-sync-metadata
 shairport_mpris_mqtt_bridge_enabled: false
-shairport_mpris_mqtt_client_id: shairport-mpris-metadata-bridge
+# Per host: aswitch and pi-cam both run this bridge, and with one shared ID the
+# broker kicked each off in turn about every second.
+shairport_mpris_mqtt_client_id: "shairport-mpris-{{ inventory_hostname_short }}"
 # Ask Home Assistant over MQTT to wake a USB DAC, then wait for its ALSA card
 # before play begins.
 shairport_dac_wake_enabled: false

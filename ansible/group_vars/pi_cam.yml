@@ -59,6 +59,11 @@ aswitch_env_extra:
   AMP_TRIGGER_COMMAND_TOPIC: pi-cam/trigger
   AMP_TRIGGER_STATE_TOPIC: pi-cam/trigger/state
   AMP_TRIGGER_AVAILABILITY_TOPIC: pi-cam/availability
+  AMP_TRIGGER_MQTT_CLIENT_ID: pi-cam-amp-trigger
+  # Both services republish availability and state on Home Assistant's
+  # homeassistant/status "online" and on this timer (seconds; 0 disables).
+  AMP_TRIGGER_REPUBLISH_SECONDS: "300"
+  DAC_REPUBLISH_SECONDS: "300"
 
 audio_room_name: lounge_room
 airplay_display_name: Lounge Room Audio
