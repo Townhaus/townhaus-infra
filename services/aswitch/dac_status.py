@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import threading
+import time
 
 import paho.mqtt.client as mqtt
 
@@ -21,6 +22,12 @@ DAC_STATE_TOPIC = os.environ.get("DAC_STATE_TOPIC", "aswitch/dac/zd3/state")
 DAC_DETAILS_TOPIC = os.environ.get("DAC_DETAILS_TOPIC", "aswitch/dac/zd3/details")
 DAC_AVAILABILITY_TOPIC = os.environ.get("DAC_AVAILABILITY_TOPIC", "aswitch/dac/zd3/availability")
 DAC_COMMAND_TOPIC = os.environ.get("DAC_COMMAND_TOPIC", "")
+# Home Assistant publishes "online" here on every start. State is published
+# only on change, so after its restart on 2026-11-22 it showed the ZD3 as off
+# while it was connected. Republish everything when it comes back, and on a
+# timer so a lost retained value heals by itself. 0 disables the timer.
+HA_STATUS_TOPIC = os.environ.get("HA_STATUS_TOPIC", "homeassistant/status")
+REPUBLISH_SECONDS = float(os.environ.get("DAC_REPUBLISH_SECONDS", "300"))
 
 
 def normalize_lines(output):
@@ -46,11 +53,13 @@ def detect_dac():
 
 
 class DacStatusPublisher:
-    def __init__(self):
+    def __init__(self, clock=time.monotonic):
         self.logger = logging.getLogger("dac_status")
         self._stop = threading.Event()
+        self._clock = clock
         self.last_state = None
         self.last_details = None
+        self.last_full_publish = clock()
         self.client = self._build_client()
 
     def _build_client(self):
@@ -67,12 +76,20 @@ class DacStatusPublisher:
     def on_connect(self, client, userdata, flags, reason_code, properties):
         self.logger.info("Connected to MQTT: reason_code=%s", reason_code)
         self.publish_availability("online")
+        client.subscribe(HA_STATUS_TOPIC)
+        self.force_republish()
         if DAC_COMMAND_TOPIC:
             client.subscribe(DAC_COMMAND_TOPIC)
             self.logger.info("Subscribed to command topic: %s", DAC_COMMAND_TOPIC)
 
     def on_message(self, client, userdata, msg):
         payload = msg.payload.decode(errors="ignore").strip().lower()
+        if msg.topic == HA_STATUS_TOPIC:
+            if payload == "online":
+                self.logger.info("Home Assistant is online; republishing availability and state")
+                self.publish_availability("online")
+                self.force_republish()
+            return
         self.logger.info("Command %s -> %s", msg.topic, payload)
         if payload == "start":
             self._trigger_camilladsp()
@@ -93,6 +110,20 @@ class DacStatusPublisher:
             self.logger.info("Disconnected from MQTT")
             return
         self.logger.warning("MQTT disconnected: reason_code=%s", reason_code)
+
+    def force_republish(self):
+        """Make the next poll publish state and details even if unchanged."""
+        self.last_state = None
+        self.last_details = None
+
+    def republish_if_due(self):
+        if REPUBLISH_SECONDS <= 0:
+            return
+        now = self._clock()
+        if now - self.last_full_publish >= REPUBLISH_SECONDS:
+            self.last_full_publish = now
+            self.publish_availability("online")
+            self.force_republish()
 
     def publish_availability(self, value):
         self.client.publish(DAC_AVAILABILITY_TOPIC, value, retain=True)
@@ -124,6 +155,7 @@ class DacStatusPublisher:
         try:
             while not self._stop.is_set():
                 try:
+                    self.republish_if_due()
                     connected, details = detect_dac()
                     self.publish_state(connected, details)
                 except Exception:
