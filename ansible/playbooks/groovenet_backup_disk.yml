@@ -1,0 +1,6 @@
+---
+- name: Configure the Groovenet local backup directory without deploying services
+  hosts: townhaus_caddy
+  gather_facts: false
+  roles:
+    - role: groovenet_backup_disk

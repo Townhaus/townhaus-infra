@@ -49,6 +49,7 @@ syntax-check:
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-now-playing.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/deploy-vinyl-live.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beelink.yml
+    ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/groovenet_backup_disk.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/beszel_systems.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch.yml
     ansible-playbook --syntax-check -i ansible/inventory.ini.example ansible/playbooks/aswitch_airplay.yml
@@ -69,6 +70,7 @@ check:
     just syntax-check
     just lint
     just test-groovenet-deploy
+    just test-groovenet-backup-disk
     just test-opnsense-beszel
     just test-shairport-dac-wake
     git diff --check
@@ -89,6 +91,10 @@ deploy-stack:
 test-groovenet-deploy:
     python3 scripts/test-groovenet-deploy.py
 
+# Exercise local backup mount guards offline, without formatting or writing disks.
+test-groovenet-backup-disk:
+    python3 scripts/test-groovenet-backup-disk.py
+
 # Test the Shairport DAC wake hook without MQTT, ALSA or a Pi.
 test-shairport-dac-wake:
     python3 scripts/test-shairport-dac-wake.py
@@ -105,6 +111,11 @@ configure-opnsense-beszel *args:
 # Deploy the GrooveNET stack to beelink at the pinned tag, or override: `just deploy-groovenet v0.1.5`.
 deploy-groovenet version="":
     ansible-playbook ansible/deploy-groovenet.yml {{ if version == "" { "" } else { "-e groovenet_image_tag=" + version } }}
+
+# Configure only the local backup disk. Review --check --diff before applying.
+[positional-arguments]
+deploy-groovenet-backup-disk *args:
+    ansible-playbook ansible/playbooks/groovenet_backup_disk.yml "$@"
 
 # Deploy PVR Analog from its configured revision, or override with a SHA / tag.
 [positional-arguments]
