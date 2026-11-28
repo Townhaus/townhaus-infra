@@ -1,0 +1,12 @@
+---
+# Copy to groovenet_backup_disk.yml (gitignored). Reuse the existing disk only.
+groovenet_backup_disk_enabled: true
+# Beelink: Seagate ST4000DM004-2U9104, 4 TB, serial ZW641752.
+# Verify with lsblk/findmnt before enabling, especially after replacing a disk.
+groovenet_backup_disk_uuid: 5b4a169a-a2b9-4f21-81a9-1e2e815d4c39
+groovenet_backup_disk_storage_mount: /srv/storage
+groovenet_backup_disk_directory: groovenet-backup
+groovenet_backup_disk_mount: /srv/groovenet-backup
+# Create a dedicated password, separate from the remote repository password.
+# Keep this secret in 1Password so it survives loss of the host and disk.
+groovenet_backup_disk_restic_password_ref: op://Homelab/groovenet/RESTIC_LOCAL_PASSWORD

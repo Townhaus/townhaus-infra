@@ -1,0 +1,104 @@
+---
+- name: Configure the shared-disk Groovenet backup target
+  when: groovenet_backup_disk_enabled | bool
+  become: true
+  block:
+    - name: Validate the existing storage and deployment
+      ansible.builtin.import_tasks: preflight.yml
+      tags: [preflight]
+
+    - name: Resolve the local repository password from 1Password
+      ansible.builtin.command:
+        argv: [op, read, "{{ groovenet_backup_disk_restic_password_ref }}"]
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      register: _groovenet_backup_disk_local_password
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    - name: Require a nonempty single-line password
+      ansible.builtin.assert:
+        that:
+          - _groovenet_backup_disk_local_password.stdout | length > 0
+          - "'\n' not in _groovenet_backup_disk_local_password.stdout"
+          - "'\r' not in _groovenet_backup_disk_local_password.stdout"
+      no_log: true
+
+    # state=present updates fstab only: do not remount the active shared disk.
+    - name: Persist the shared disk by UUID with boot-safe options
+      ansible.posix.mount:
+        path: "{{ groovenet_backup_disk_storage_mount }}"
+        src: "UUID={{ groovenet_backup_disk_uuid }}"
+        fstype: ext4
+        opts: defaults,nofail,x-systemd.device-timeout=10s
+        dump: "0"
+        passno: "2"
+        state: present
+
+    - name: Create only the dedicated backup directory on the verified disk
+      ansible.builtin.file:
+        path: "{{ groovenet_backup_disk_storage_mount }}/{{ groovenet_backup_disk_directory }}"
+        state: directory
+        owner: "1001"
+        group: "1001"
+        mode: "0700"
+
+    - name: Bind only the backup directory into its own mount point
+      ansible.posix.mount:
+        path: "{{ groovenet_backup_disk_mount }}"
+        src: "{{ groovenet_backup_disk_storage_mount }}/{{ groovenet_backup_disk_directory }}"
+        fstype: none
+        opts: bind,nofail,x-systemd.requires-mounts-for=/srv/storage
+        state: mounted
+
+    # Check mode cannot inspect a bind mount it has only proposed creating.
+    - name: Verify the mounted target before creating its marker
+      when: not ansible_check_mode
+      block:
+        - name: Inspect the mounted backup directory
+          ansible.builtin.command:
+            argv: [findmnt, --mountpoint, /srv/groovenet-backup, --noheadings, --output, "UUID,FSROOT"]
+          register: _groovenet_backup_disk_verified_backup_mount
+          changed_when: false
+
+        - name: Read backup mount and parent device numbers
+          ansible.builtin.command:
+            argv: [stat, -c, "%d", /srv/groovenet-backup, /srv]
+          register: _groovenet_backup_disk_backup_devices
+          changed_when: false
+
+        - name: Require the expected disk and directory on a separate device
+          ansible.builtin.assert:
+            that:
+              - _groovenet_backup_disk_verified_backup_mount.stdout.split() == [groovenet_backup_disk_uuid, '/groovenet-backup']
+              - _groovenet_backup_disk_backup_devices.stdout_lines[0] != _groovenet_backup_disk_backup_devices.stdout_lines[1]
+
+        - name: Create the marker only on the verified mounted disk
+          ansible.builtin.copy:
+            content: ""
+            dest: "{{ groovenet_backup_disk_mount }}/.groovenet-backup-disk"
+            force: false
+            owner: "1001"
+            group: "1001"
+            mode: "0600"
+
+    - name: Manage only Groovenet local backup settings
+      ansible.builtin.lineinfile:
+        path: "{{ groovenet_app_dir }}/.env.host"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: true
+        owner: "{{ _groovenet_backup_disk_env.stat.uid }}"
+        group: "{{ _groovenet_backup_disk_env.stat.gid }}"
+        mode: "0600"
+      loop:
+        - regexp: "^LOCAL_BACKUP_PATH="
+          line: "LOCAL_BACKUP_PATH={{ groovenet_backup_disk_mount }}"
+        - regexp: "^LOCAL_BACKUP_RESTIC_PASSWORD="
+          # Literal single quotes protect $, #, spaces and backslashes from
+          # Compose dotenv interpolation. Escape embedded single quotes.
+          line: "LOCAL_BACKUP_RESTIC_PASSWORD='{{ _groovenet_backup_disk_local_password.stdout | replace(\"'\", \"\\'\") }}'"
+      no_log: true

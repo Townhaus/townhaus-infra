@@ -1,0 +1,8 @@
+---
+groovenet_backup_disk_enabled: false
+# Reuse an existing, mounted ext4 disk only. This role cannot format a disk.
+groovenet_backup_disk_uuid: ""
+groovenet_backup_disk_storage_mount: /srv/storage
+groovenet_backup_disk_directory: groovenet-backup
+groovenet_backup_disk_mount: /srv/groovenet-backup
+groovenet_backup_disk_restic_password_ref: ""
